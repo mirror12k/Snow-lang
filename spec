@@ -1,14 +1,29 @@
 
 
 
-snow language spec draft v0.1
+snow language spec draft v0.2
 	compiles straight to lua code
 	most syntax taken from lua
 	features:
 		.. operator merged with +
 			(typed variables allow the compiler to discern the two)
+		self-referential operators
+			s += "_suffix"
+				becomes
+					s = s + "_suffix"
+			n++
+				becomes
+					n = n + 1
+
+			+= -= *= /= %= ^= ++ --
+
 		tables declared via []
 			tables may only act as hash-tables or as array-tables, determined by how it is declared and how it is assigned to a variable
+			arrays:
+				[ 5,4,3 ]
+			tables:
+				[ a => 5, b => 15, c => -10 ]
+
 		staticly typed variables:
 			bools: ?b
 			numbers: #n
@@ -42,7 +57,6 @@ snow language spec draft v0.1
 			'
 			would transpile directly to
 			['asdf','qwerty', 'zxcv']
-		scopes declared via {}
 		named and anonymous functions with typed arguments can have default arg names
 			default names:
 				bools: b
@@ -54,7 +68,8 @@ snow language spec draft v0.1
 					functions declared this way are assumed to be vararg all functions
 				arbitrary: x
 			examples:
-				fun $ { print "my string: $s" }
+				function fun $
+					print "my string: $s"
 				$ -> { print s }
 				#& -> { return n * f() }
 			if two arguments of the same type are required, numbers are appended to them starting with 1
@@ -79,32 +94,92 @@ snow language spec draft v0.1
 						foo(5, bar(), 'asdf')
 		function declaration
 			named functions:
-				foo -> {
+				function foo
 					print 'hello world!'
-				}
-				bar $x -> {
+				
+				function bar $x
 					print x
-				}
-			default function arguments
-				foo #n=5, $s='world' -> {
-
-				}
+			default function arguments:
+				function foo #n=5, $s='world'
+					// code
 			vararg functions:
-				example:
-					foo ... -> {}
+				function foo ...
+					// code
+
 				... is treated as a read-only array, translated to {...} everywhere
 			anonymous functions:
-				{ print 'hello world!' }
-				$x, $y -> { print "coords: $x, $y" }
-		
+				&f = { print 'hello world!' }
+				&f = $x, $y -> { print "coords: $x, $y" }
+
+			syntactic sugar for methods:
+				method test
+					print "hello world, i am %self"
+
+				self is always a table, it assumed to be non-null
+
+			when inside a table declaration, function and method declarations are sugared syntactically:
+				[
+					function asdf
+						print 'in asdf!'
+					function qwert
+						print 'in qwert'
+					method zxcv
+						print 'i am %self in zxcv'
+				]
+					becomes
+						{
+							asdf = function () print('in asdf!') end,
+							qwert = function () print('in qwert') end,
+							zxvc = function (self) print ('i am ' .. self .. ' in zxcv') end,
+						}
+
+		syntactic sugar for calling functions with array/table constructors:
+				foobar:
+					a => 3
+					b => 2 + asdf
+					["prefix_$somevar"] => 5
+			or
+				barbaz:
+					5
+					asdf + '_suffix'
+					15
+
+			this allows neat little class definitions:
+				class 'my_special_class':
+					method _init
+						self.val = 5
+					method inc
+						self.val++
+
+			also allows nested definition execution:
+				process:
+					branch 'number':
+						'lc'
+						1
+						'add'
+					branch 'string':
+						'lc'
+						'1'
+						'concat'
+
+				becomes
+					process({
+						branch('number', {'lc', 1, 'add'}),
+						branch('string', {'lc', '1', 'concat'})
+					})
+
+
 		forin to simplify array and table iteration with default arguements:
 			arrays will always use ipairs while tables will always use pairs
 			array keys and values are always represented as read-only variable #k, *v
+				forin my_array
+					print "my val: #v"
 			table keys and values are always represented as read-only variables $k, *v
+				forin my_table
+					print "t[$k] => $v"
 			when iterating on arbitrary values, will require a @ or % prefix to indicate which type to use
-				forin @blueprint.sections {
+				forin @blueprint.sections
 					// stuff
-				}
 
 
 		array and table values are always interpreted as * values
@@ -113,17 +188,18 @@ snow language spec draft v0.1
 
 
 		if statements:
-			if v == 5 {
+			if v == 5
 				print 'v is 5'
-			}
+			
 		while statements:
-			while t {
-
-			}
+			while t
+				print "i have a table!"
+			
 		for statements:
-			for #i = 1, 5 {
-
-			}
+			for #i = 1, 5
+				print "iteration #i"
+			for #i = 0, 100, 10
+				print "iteration #i"
 
 
 		traditional c-style comments:
@@ -133,4 +209,5 @@ snow language spec draft v0.1
 			/* asdf */
 				becomes
 					--[[ asdf ]]
+
 

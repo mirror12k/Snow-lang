@@ -48,6 +48,10 @@ snow language spec draft v0.2
 			print "i have a number #mynum"
 			print "i have a bool: ?is_ded"
 
+			print "i have a value: @a[5], @a[i]"
+			print "i have a value: %self.value"
+			print "i have a value: %self[key]"
+
 			should there be string interpolation of arrays, tables, and functions?
 		inherent solution of specific functions such as qw
 			qw '
@@ -70,11 +74,21 @@ snow language spec draft v0.2
 			examples:
 				function fun $
 					print "my string: $s"
+				function fun ?$
+					if b
+						print "success: $s"
+					else
+						print "denied!"
 				$ -> { print s }
 				#& -> { return n * f() }
 			if two arguments of the same type are required, numbers are appended to them starting with 1
 				$$ -> { print "we have two variables: '$s1' and '$s2'" }
-				?## -> { if b { return n1 } else { return n2 } }
+				?## -> {
+					if b
+						return n1
+					else
+						return n2
+					}
 		globals must be explicitly declared, otherwise the compiler errors out
 			global $world
 			print 'world name: ' + world.name
@@ -190,6 +204,10 @@ snow language spec draft v0.2
 		if statements:
 			if v == 5
 				print 'v is 5'
+			elseif v < 5
+				print 'v is less than 5'
+			else
+				print 'v is greater than 5'
 			
 		while statements:
 			while t

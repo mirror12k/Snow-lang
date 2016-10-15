@@ -13,6 +13,7 @@ lua syntax interpreter
 lua libraries
 	math
 	string
+	table
 	coroutine
 
 fuck this will need a garbage collector because of circular references

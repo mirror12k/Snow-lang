@@ -94,7 +94,7 @@ our @lua_syntax_tokens = (qw#
 #, '#', ',');
 
 our $lua_keywords_regex = join '|', @lua_keywords;
-$lua_keywords_regex = qr/\b$lua_keywords_regex\b/;
+$lua_keywords_regex = qr/\b(?:$lua_keywords_regex)\b/;
 
 our $lua_syntax_tokens_regex = join '|', map quotemeta, @lua_syntax_tokens;
 $lua_syntax_tokens_regex = qr/$lua_syntax_tokens_regex/;
@@ -149,6 +149,8 @@ sub parse {
 
 	$self->{code_tokens} = [ grep { $_->[0] ne 'whitespace' and $_->[0] ne 'comment' } @tokens ];
 	$self->{code_tokens_index} = 0;
+
+	return $self->{code_tokens}
 }
 
 

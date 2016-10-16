@@ -1,6 +1,13 @@
 
 
+::asdf::
 
-print ('test' .. 5 .. 'asdf')
-print ('hello world!')
+break
+break
+goto asdf
+
+
+break;
+
+
 

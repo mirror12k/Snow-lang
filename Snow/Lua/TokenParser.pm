@@ -149,8 +149,6 @@ sub parse {
 
 	$self->{code_tokens} = [ grep { $_->[0] ne 'whitespace' and $_->[0] ne 'comment' } @tokens ];
 	$self->{code_tokens_index} = 0;
-
-	say foreach $self->dump;
 }
 
 
@@ -169,8 +167,8 @@ sub is_token_type {
 sub is_token_val {
 	my ($self, $type, $val, $offset) = @_;
 	return 0 unless $self->more_tokens;
-	return $self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][0] eq $type and
-		$self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][1] eq $val
+	return ($self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][0] eq $type and
+			$self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][1] eq $val)
 }
 
 sub assert_token_type {
@@ -183,6 +181,18 @@ sub assert_token_val {
 	my ($self, $type, $val, $offset) = @_;
 	$self->confess_at_current_offset ("expected token type $type with value '$val'" . (defined $offset ? " (at offset $offset)" : ''))
 		unless $self->is_token_val($type, $val, $offset);
+}
+
+sub assert_step_token_type {
+	my ($self, $type) = @_;
+	$self->assert_token_type($type);
+	return $self->next_token
+}
+
+sub assert_step_token_val {
+	my ($self, $type, $val) = @_;
+	$self->assert_token_val($type, $val);
+	return $self->next_token
 }
 
 sub confess_at_current_offset {
@@ -207,7 +217,7 @@ sub more_tokens {
 sub dump {
 	my ($self) = @_;
 
-	return map { "[$_->[2]:$_->[3]] $_->[0] => <$_->[1]>" } @{$self->{code_tokens}};
+	return join "\n", map { "[$_->[2]:$_->[3]] $_->[0] => <$_->[1]>" } @{$self->{code_tokens}};
 }
 
 

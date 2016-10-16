@@ -47,13 +47,22 @@
 
 
 
-function foo (a,b,c)
-	break
-end
-function obj.bar.baz (...)
-	break
-end
-function obj:asdf (v, ...)
+-- function foo (a,b,c)
+-- 	break
+-- end
+-- function obj.bar.baz (...)
+-- 	break
+-- end
+-- function obj:asdf (v, ...)
+-- 	break
+-- end
+
+
+
+
+local x,y = 5,true, ...
+
+local function foo (a,b)
 	break
 end
 

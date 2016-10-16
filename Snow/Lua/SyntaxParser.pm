@@ -133,13 +133,13 @@ sub parse_syntax_statements {
 
 	} elsif ($self->is_token_val( keyword => 'for' )) {
 		$self->next_token;
-		my $name_list = [ $self->parse_syntax_name_list ];
+		my $names_list = [ $self->parse_syntax_names_list ];
 		$self->assert_step_token_val(keyword => 'in');
 		my $expression_list = [ $self->parse_syntax_expression_list ];
 		$self->assert_step_token_val(keyword => 'do');
 		push @statements, {
 			type => 'iter_statement',
-			name_list => $name_list,
+			names_list => $names_list,
 			expression_list => $expression_list,
 			block => $self->parse_syntax_block,
 		};
@@ -152,28 +152,37 @@ sub parse_syntax_statements {
 			$self->next_token;
 			$identifier = { type => 'access_expression', expression => $identifier, identifier => $self->assert_step_token_type('identifier')->[1] };
 		}
-		my @args_list;
+		my $has_self;
 		if ($self->is_token_val( symbol => ':' )) {
 			$self->next_token;
-			push @args_list, 'self';
+			$has_self = 1;
 			$identifier = { type => 'access_expression', expression => $identifier, identifier => $self->assert_step_token_type('identifier')->[1] };
 		}
 
-		$self->assert_step_token_val(symbol => '(');
-		push @args_list, $self->parse_syntax_arg_list;
-		$self->assert_step_token_val(symbol => ')');
+		my $expression = $self->parse_syntax_function_expression;
+		unshift @{$expression->{args_list}}, 'self' if $has_self;
 		push @statements, {
 			type => 'assignment_statement',
 			var_list => [ $identifier ],
-			expression_list => [{
-				type => 'function_expression',
-				args_list => \@args_list,
-				block => $self->parse_syntax_block,
-			}],
+			expression_list => [ $expression ],
 		};
-		$self->assert_step_token_val(keyword => 'end');
 
-
+	} elsif ($self->is_token_val( keyword => 'local' )) {
+		$self->next_token;
+		if ($self->is_token_val( keyword => 'function' )) {
+			$self->next_token;
+			my $identifier = $self->assert_step_token_type('identifier')->[1];
+			push @statements, { type => 'variable_declaration_statement', names_list => [ $identifier ] };
+			push @statements, { type => 'assignment_statement', var_list => [ $identifier ], expression_list => [ $self->parse_syntax_function_expression ] };
+		} else {
+			my $names_list = [ $self->parse_syntax_names_list ];
+			my $expression_list;
+			if ($self->is_token_val( symbol => '=' )) {
+				$self->next_token;
+				$expression_list = [ $self->parse_syntax_expression_list ];
+			}
+			push @statements, { type => 'variable_declaration_statement', names_list => $names_list, expression_list => $expression_list };
+		}
 
 	} elsif ($self->is_token_val( symbol => ';' )) {
 		$self->next_token;
@@ -228,6 +237,23 @@ sub parse_syntax_expression {
 	return $expression
 }
 
+sub parse_syntax_function_expression {
+	my ($self) = @_;
+
+	$self->assert_step_token_val(symbol => '(');
+	my @args_list = $self->parse_syntax_args_list;
+	$self->assert_step_token_val(symbol => ')');
+
+	my $expression = {
+		type => 'function_expression',
+		args_list => \@args_list,
+		block => $self->parse_syntax_block,
+	};
+	$self->assert_step_token_val(keyword => 'end');
+
+	return $expression
+}
+
 
 sub parse_syntax_expression_list {
 	my ($self) = @_;
@@ -244,43 +270,43 @@ sub parse_syntax_expression_list {
 }
 
 
-sub parse_syntax_name_list {
+sub parse_syntax_names_list {
 	my ($self) = @_;
 
-	my @name_list;
-	push @name_list, $self->assert_step_token_type('identifier')->[1];
+	my @names_list;
+	push @names_list, $self->assert_step_token_type('identifier')->[1];
 
 	while ($self->is_token_val( symbol => ',' )) {
 		$self->next_token;
-		push @name_list, $self->assert_step_token_type('identifier')->[1];
+		push @names_list, $self->assert_step_token_type('identifier')->[1];
 	}
 
-	return @name_list
+	return @names_list
 }
 
 
-sub parse_syntax_arg_list {
+sub parse_syntax_args_list {
 	my ($self) = @_;
 
 
 	return $self->next_token->[1] if $self->is_token_val( symbol => '...' );
 
-	my @arg_list;
-	push @arg_list, $self->assert_step_token_type('identifier')->[1];
+	my @args_list;
+	push @args_list, $self->assert_step_token_type('identifier')->[1];
 
 	while ($self->is_token_val( symbol => ',' )) {
 		$self->next_token;
 		if ($self->is_token_val( symbol => '...')) {
-			push @arg_list, $self->next_token->[1];
+			push @args_list, $self->next_token->[1];
 			last
 		} else {
-			push @arg_list, $self->assert_step_token_type('identifier')->[1];
+			push @args_list, $self->assert_step_token_type('identifier')->[1];
 		}
 	}
 
-	say "got arg_list: ", join ',', @arg_list;
+	say "got args_list: ", join ',', @args_list;
 
-	return @arg_list
+	return @args_list
 }
 
 

@@ -196,9 +196,18 @@ sub parse_syntax_statements {
 sub parse_syntax_return_statement {
 	my ($self) = @_;
 	
-
-	return undef
+	return unless $self->is_token_val( keyword => 'return' );
+	$self->next_token;
+	return {
+		type => 'return_statement',
+		expression => $self->parse_syntax_expression,
+	}
 }
+
+
+our @lua_syntax_unary_operations = ('not', '#', '-', '~');
+our %lua_syntax_unary_operations_hash;
+@lua_syntax_unary_operations_hash{@lua_syntax_unary_operations} = ();
 
 
 sub parse_syntax_expression {
@@ -233,12 +242,65 @@ sub parse_syntax_expression {
 	} elsif ($self->is_token_val( keyword => 'function' )) {
 		$self->next_token;
 		$expression = $self->parse_syntax_function_expression;
-
+	} elsif ($self->is_token_type('symbol') and exists $lua_syntax_unary_operations_hash{$self->peek_token->[1]}) {
+		my $operation = $self->next_token->[1];
+		$expression = {
+			type => 'unary_expression',
+			operation => $operation,
+			expression => $self->parse_syntax_expression,
+		};
 	} else {
 		$self->confess_at_current_offset('expression expected');
 	}
 
+	$expression = $self->parse_syntax_more_expression($expression);
+
 	return $expression
+}
+
+
+our @lua_syntax_binary_operations = qw#
+	or
+	and
+	<
+	>
+	<=
+	>=
+	~=
+	==
+	|
+	~
+	&
+	<<
+	>>
+	..
+	+
+	-
+	*
+	/
+	//
+	%
+#;
+
+our %lua_syntax_binary_operations_hash;
+@lua_syntax_binary_operations_hash{@lua_syntax_binary_operations} = ();
+
+sub parse_syntax_more_expression {
+	my ($self, $expression) = @_;
+
+	while (1) {
+		if ($self->is_token_type('symbol') and exists $lua_syntax_binary_operations_hash{$self->peek_token->[1]}) {
+			my $operation = $self->next_token->[1];
+			$expression = {
+				type => 'binary_expression',
+				operation => $operation,
+				expression_left => $expression,
+				expression_right => $self->parse_syntax_expression,
+			};
+		} else {
+			return $expression
+		}
+	}
 }
 
 sub parse_syntax_function_expression {

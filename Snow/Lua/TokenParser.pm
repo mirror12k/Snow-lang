@@ -154,10 +154,16 @@ sub parse {
 }
 
 
+sub peek_token {
+	my ($self) = @_;
+	return undef unless $self->more_tokens;
+	return $self->{code_tokens}[$self->{code_tokens_index}]
+}
+
 sub next_token {
 	my ($self) = @_;
 	return undef unless $self->more_tokens;
-	return  $self->{code_tokens}[$self->{code_tokens_index}++]
+	return $self->{code_tokens}[$self->{code_tokens_index}++]
 }
 
 sub is_token_type {

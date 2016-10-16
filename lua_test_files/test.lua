@@ -68,5 +68,11 @@
 
 
 
-local v = function () end
+-- local v = function () local a = 5 return true end
+
+
+
+local a = 5 + ~true - nil * ...
+local b = -5 * 2 + 1
+
 

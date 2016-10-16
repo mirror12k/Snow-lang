@@ -4,8 +4,9 @@ use warnings;
 
 use feature 'say';
 
+use Carp;
+
 use Sugar::IO::File;
-use Data::Dumper;
 
 
 
@@ -26,9 +27,9 @@ sub new {
 sub parse_file {
 	my ($self, $filepath) = @_;
 
-	$self->{filepath} = $filepath;
+	$self->{filepath} = Sugar::IO::File->new($filepath);
 
-	my $text = Sugar::IO::File->new($filepath)->read;
+	my $text = $self->{filepath}->read;
 	return $self->parse($text)
 }
 
@@ -146,16 +147,67 @@ sub parse {
 
 	die "error parsing file at " . substr ($text, pos $text // 0) if not defined pos $text or pos $text != length $text;
 
-	$self->{tokens} = \@tokens;
+	$self->{code_tokens} = [ grep { $_->[0] ne 'whitespace' and $_->[0] ne 'comment' } @tokens ];
+	$self->{code_tokens_index} = 0;
 
 	say foreach $self->dump;
+}
+
+
+sub next_token {
+	my ($self) = @_;
+	return undef unless $self->more_tokens;
+	return  $self->{code_tokens}[$self->{code_tokens_index}++]
+}
+
+sub is_token_type {
+	my ($self, $type, $offset) = @_;
+	return 0 unless $self->more_tokens;
+	return $self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][0] eq $type
+}
+
+sub is_token_val {
+	my ($self, $type, $val, $offset) = @_;
+	return 0 unless $self->more_tokens;
+	return $self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][0] eq $type and
+		$self->{code_tokens}[$self->{code_tokens_index} + ($offset // 0)][1] eq $val
+}
+
+sub assert_token_type {
+	my ($self, $type, $offset) = @_;
+	$self->confess_at_current_offset ("expected token type $type" . (defined $offset ? " (at offset $offset)" : ''))
+		unless $self->is_token_type($type, $offset);
+}
+
+sub assert_token_val {
+	my ($self, $type, $val, $offset) = @_;
+	$self->confess_at_current_offset ("expected token type $type with value '$val'" . (defined $offset ? " (at offset $offset)" : ''))
+		unless $self->is_token_val($type, $val, $offset);
+}
+
+sub confess_at_current_offset {
+	my ($self, $msg) = @_;
+
+	my $position;
+	if ($self->more_tokens) {
+		$position = 'line ' . $self->{code_tokens}[$self->{code_tokens_index}][2];
+	} else {
+		$position = 'end of file';
+	}
+
+	confess "error on $position: $msg";
+}
+
+sub more_tokens {
+	my ($self) = @_;
+	return $self->{code_tokens_index} != @{$self->{code_tokens}}
 }
 
 
 sub dump {
 	my ($self) = @_;
 
-	return map { "[$_->[2]] $_->[0] => <$_->[1]>" } @{$self->{tokens}};
+	return map { "[$_->[2]:$_->[3]] $_->[0] => <$_->[1]>" } @{$self->{code_tokens}};
 }
 
 

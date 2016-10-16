@@ -79,6 +79,13 @@ sub parse_syntax_statement {
 		$statement = { type => 'while_statement', expression => $expression, block => $self->parse_syntax_block };
 		$self->assert_step_token_val(keyword => 'end');
 
+	} elsif ($self->is_token_val( keyword => 'repeat' )) {
+		$self->next_token;
+		my $block = $self->parse_syntax_block;
+		$self->assert_step_token_val(keyword => 'until');
+		my $expression = $self->parse_syntax_expression;
+		$statement = { type => 'until_statement', expression => $expression, block => $block };
+
 	} elsif ($self->is_token_val( keyword => 'if' )) {
 		$self->next_token;
 		my $expression = $self->parse_syntax_expression;
@@ -101,6 +108,43 @@ sub parse_syntax_statement {
 		}
 
 		$self->assert_step_token_val(keyword => 'end');
+
+	} elsif ($self->is_token_val( keyword => 'for' ) and $self->is_token_val( symbol => '=', 2 )) {
+		$self->next_token;
+		my $identifier = $self->assert_step_token_type('identifier')->[1];
+		$self->assert_step_token_val(symbol => '=');
+		my $expression_start = $self->parse_syntax_expression;
+		$self->assert_step_token_val(symbol => ',');
+		my $expression_end = $self->parse_syntax_expression;
+		my $expression_step;
+		if ($self->is_token_val( symbol => ',' )) {
+			$self->assert_step_token_val(symbol => ',');
+			$expression_step = $self->parse_syntax_expression;
+		}
+		$self->assert_step_token_val(keyword => 'do');
+		$statement = {
+			type => 'for_statement',
+			expression_start => $expression_start,
+			expression_end => $expression_end,
+			expression_step => $expression_step,
+			block => $self->parse_syntax_block,
+		};
+		$self->assert_step_token_val(keyword => 'end');
+
+	} elsif ($self->is_token_val( keyword => 'for' )) {
+		$self->next_token;
+		my $name_list = $self->parse_syntax_name_list;
+		$self->assert_step_token_val(keyword => 'in');
+		my $expression_list = $self->parse_syntax_expression_list;
+		$self->assert_step_token_val(keyword => 'do');
+		$statement = {
+			type => 'iter_statement',
+			name_list => $name_list,
+			expression_list => $expression_list,
+			block => $self->parse_syntax_block,
+		};
+		$self->assert_step_token_val(keyword => 'end');
+
 
 	} elsif ($self->is_token_val( symbol => ';' )) {
 		$self->next_token;
@@ -132,7 +176,7 @@ sub parse_syntax_expression {
 		$expression = { type => 'bool_constant', value => $value };
 
 	} elsif ($self->is_token_type('numeric_constant')) {
-		my $value = 0 + $self->next_token->[1];
+		my $value = $self->next_token->[1];
 		$expression = { type => 'numeric_constant', value => $value };
 		
 	} elsif ($self->is_token_type('literal_string')) {
@@ -148,6 +192,38 @@ sub parse_syntax_expression {
 	}
 
 	return $expression
+}
+
+
+sub parse_syntax_expression_list {
+	my ($self) = @_;
+
+	my @expression_list;
+	push @expression_list, $self->parse_syntax_expression;
+
+	while ($self->is_token_val( symbol => ',' )) {
+		$self->next_token;
+		push @expression_list, $self->parse_syntax_expression;
+	}
+
+	return \@expression_list
+}
+
+
+sub parse_syntax_name_list {
+	my ($self) = @_;
+
+	my @name_list;
+	push @name_list, $self->assert_step_token_type('identifier')->[1];
+
+	while ($self->is_token_val( symbol => ',' )) {
+		$self->next_token;
+		push @name_list, $self->assert_step_token_type('identifier')->[1];
+	}
+
+	say "got namelist: ", join ',', @name_list;
+
+	return \@name_list
 }
 
 

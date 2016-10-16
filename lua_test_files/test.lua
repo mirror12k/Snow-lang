@@ -33,16 +33,27 @@
 
 
 
-for k,v in 1.5, true do
+-- for k,v in 1.5, true do
+-- 	break
+-- end
+
+
+-- repeat
+-- 	goto asdf
+-- 	break
+-- until nil
+
+-- ::asdf::
+
+
+
+function foo (a,b,c)
 	break
 end
-
-
-repeat
-	goto asdf
+function obj.bar.baz (...)
 	break
-until nil
-
-::asdf::
-
+end
+function obj:asdf (v, ...)
+	break
+end
 

@@ -72,7 +72,10 @@
 
 
 
-local a = 5 + ~true - nil * ...
-local b = -5 * 2 + 1
+-- local a = 5 + ~true - nil * ...
+-- local b = -5 * 2 + 1
+
+local a = print()
+local a = obj:foo(5)
 
 

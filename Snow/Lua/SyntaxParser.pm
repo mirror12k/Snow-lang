@@ -229,11 +229,11 @@ sub parse_syntax_expression {
 	} elsif ($self->is_token_type('literal_string')) {
 		my $value = $self->next_token->[1];
 		if ($value =~ /^["']/) {
-			die "invalid literal_string value $value" unless $value =~ s/^(["'])(.*)\1$/$1/s;
+			die "invalid literal_string value $value" unless $value =~ s/^(["'])(.*)\1$/$2/s;
 		} else {
-			die "invalid literal_string value $value" unless $value =~ s/^\[(=*)\[(.*)\]\1\]$/$1/s;
+			die "invalid literal_string value $value" unless $value =~ s/^\[(=*)\[(.*)\]\1\]$/$2/s;
 		}
-		$expression = { type => 'literal_string', value => $value };
+		$expression = { type => 'string_constant', value => $value };
 
 	} elsif ($self->is_token_val( symbol => '...' )) {
 		$self->next_token;
@@ -250,7 +250,8 @@ sub parse_syntax_expression {
 			expression => $self->parse_syntax_expression,
 		};
 	} else {
-		$self->confess_at_current_offset('expression expected');
+		$expression = $self->parse_syntax_prefix_expression;
+		# $self->confess_at_current_offset('expression expected');
 	}
 
 	$expression = $self->parse_syntax_more_expression($expression);
@@ -318,6 +319,62 @@ sub parse_syntax_function_expression {
 	$self->assert_step_token_val(keyword => 'end');
 
 	return $expression
+}
+
+sub parse_syntax_prefix_expression {
+	my ($self) = @_;
+
+	my $expression;
+
+	if ($self->is_token_val( symbol => '(' )) {
+		$self->next_token;
+		$expression = { type => 'parenthesis_expression', expression => $self->parse_syntax_expression };
+	} elsif ($self->is_token_type( 'identifier' )) {
+		my $identifier = $self->next_token->[1];
+		$expression = { type => 'identifier_expression', identifier => $identifier };
+	} else {
+		$self->confess_at_current_offset('invalid prefix expression');
+	}
+
+	while (1) {
+		if ($self->is_token_val( symbol => '.' )) {
+			my $identifier = $self->next_token->[1];
+			$expression = { type => 'access_expression', expression => $expression, identifier => $identifier };
+
+		} elsif ($self->is_token_val( symbol => '[' )) {
+			$self->next_token;
+			$expression = { type => 'expressive_access_expression', expression => $expression, access_expression => $self->parse_syntax_expression };
+			$self->assert_step_token_val( symbol => ']' );
+
+		} elsif ($self->is_token_val( symbol => ':' )) {
+			$self->next_token;
+			my $identifier = $self->assert_step_token_type('identifier')->[1];
+			$self->assert_step_token_val( symbol => '(' );
+			my @args_list;
+			@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
+			$expression = { type => 'method_call_expression', identifier => $identifier, expression => $expression, args_list => \@args_list };
+			$self->assert_step_token_val( symbol => ')' );
+
+		} elsif ($self->is_token_val( symbol => '(' )) {
+			$self->next_token;
+			my @args_list;
+			@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
+			$expression = { type => 'function_call_expression', expression => $expression, args_list => \@args_list };
+			$self->assert_step_token_val( symbol => ')' );
+
+		} elsif ($self->is_token_val( symbol => '{' )) {
+			# function call with table
+			...
+
+		} elsif ($self->is_token_type( 'literal_string' )) {
+			my $string = $self->next_token->[1];
+			my $args_list = [ { type => 'string_constant', value => $string } ];
+			$expression = { type => 'function_call_expression', expression => $expression, args_list => $args_list };
+
+		} else {
+			return $expression;
+		}
+	}
 }
 
 

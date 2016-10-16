@@ -230,6 +230,10 @@ sub parse_syntax_expression {
 		$self->next_token;
 		$expression = { type => 'vararg_expression' };
 
+	} elsif ($self->is_token_val( keyword => 'function' )) {
+		$self->next_token;
+		$expression = $self->parse_syntax_function_expression;
+
 	} else {
 		$self->confess_at_current_offset('expression expected');
 	}
@@ -289,6 +293,7 @@ sub parse_syntax_args_list {
 	my ($self) = @_;
 
 
+	return if $self->is_token_val( symbol => ')' );
 	return $self->next_token->[1] if $self->is_token_val( symbol => '...' );
 
 	my @args_list;

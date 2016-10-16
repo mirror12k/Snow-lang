@@ -60,9 +60,13 @@
 
 
 
-local x,y = 5,true, ...
+-- local x,y = 5, true, ...
 
-local function foo (a,b)
-	break
-end
+-- local function foo (a,b)
+-- 	break
+-- end
+
+
+
+local v = function () end
 

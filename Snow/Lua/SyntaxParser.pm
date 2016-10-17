@@ -338,7 +338,8 @@ sub parse_syntax_prefix_expression {
 
 	while (1) {
 		if ($self->is_token_val( symbol => '.' )) {
-			my $identifier = $self->next_token->[1];
+			$self->next_token;
+			my $identifier = $self->assert_step_token_type('identifier')->[1];
 			$expression = { type => 'access_expression', expression => $expression, identifier => $identifier };
 
 		} elsif ($self->is_token_val( symbol => '[' )) {
@@ -349,31 +350,17 @@ sub parse_syntax_prefix_expression {
 		} elsif ($self->is_token_val( symbol => ':' )) {
 			$self->next_token;
 			my $identifier = $self->assert_step_token_type('identifier')->[1];
-			$self->assert_step_token_val( symbol => '(' );
-			my @args_list;
-			@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
-			$expression = { type => 'method_call_expression', identifier => $identifier, expression => $expression, args_list => \@args_list };
-			$self->assert_step_token_val( symbol => ')' );
+			my $args_list = [ $self->parse_syntax_function_args_list ];
+			$expression = { type => 'method_call_expression', identifier => $identifier, expression => $expression, args_list => $args_list };
 
-		} elsif ($self->is_token_val( symbol => '(' )) {
-			$self->next_token;
-			my @args_list;
-			@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
-			$expression = { type => 'function_call_expression', expression => $expression, args_list => \@args_list };
-			$self->assert_step_token_val( symbol => ')' );
-
-		} elsif ($self->is_token_val( symbol => '{' )) {
-			# function call with table
-			...
-
-		} elsif ($self->is_token_type( 'literal_string' )) {
-			my $string = $self->next_token->[1];
-			my $args_list = [ { type => 'string_constant', value => $string } ];
+		} elsif ($self->is_token_type( 'literal_string' ) or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '(' )) {
+			my $args_list = [ $self->parse_syntax_function_args_list ];
 			$expression = { type => 'function_call_expression', expression => $expression, args_list => $args_list };
 
 		} else {
 			return $expression;
 		}
+		warn "got $expression->{type}";
 	}
 }
 
@@ -392,6 +379,31 @@ sub parse_syntax_expression_list {
 	return @expression_list
 }
 
+
+
+sub parse_syntax_function_args_list {
+	my ($self) = @_;
+
+	my @args_list;
+	if ($self->is_token_val( symbol => '(' )) {
+		$self->next_token;
+		@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
+		$self->assert_step_token_val( symbol => ')' );
+
+	} elsif ($self->is_token_val( symbol => '{' )) {
+		# function call with table
+		...
+
+	} elsif ($self->is_token_type( 'literal_string' )) {
+		my $string = $self->next_token->[1];
+		push @args_list, { type => 'string_constant', value => $string };
+
+	} else {
+		$self->confess_at_current_offset('failed to parse fuction call');
+	}
+
+	return @args_list
+}
 
 sub parse_syntax_names_list {
 	my ($self) = @_;

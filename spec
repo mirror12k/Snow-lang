@@ -228,4 +228,35 @@ snow language spec draft v0.2
 				becomes
 					--[[ asdf ]]
 
+		next, last, and redo commands in while, for, and forin loops:
+			while true
+				last
+
+			compiles to
+
+			while true do
+				goto last_12346
+			end ::last_12346::
+
+
+			while true
+				next
+
+			compiles to
+
+			while true do
+				goto next_12346
+			::next_12346:: end
+
+
+			while true
+				redo
+
+			compiles to
+
+			while true do ::redo_12346::
+				goto redo_12346
+			end
+
+
 

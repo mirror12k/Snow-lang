@@ -198,8 +198,9 @@ sub parse_syntax_statements {
 			while ($self->is_token_val( symbol => ',' )) {
 				$self->next_token;
 				$prefix_expression = $self->parse_syntax_prefix_expression;
-				$self->confess_at_current_offset("invalid varlist prefix expression $prefix_expression->{type}") unless $prefix_expression->{type} eq 'identifier_expression'
-						or $prefix_expression->{type} eq 'access_expression' or $prefix_expression->{type} eq 'expressive_access_expression';
+				$self->confess_at_current_offset("invalid varlist prefix expression $prefix_expression->{type}")
+						unless $prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
+						or $prefix_expression->{type} eq 'expressive_access_expression';
 				push @var_list, $prefix_expression;
 			}
 			$self->confess_at_current_offset("expected '=' after varlist") unless $self->is_token_val( symbol => '=' );
@@ -262,6 +263,10 @@ sub parse_syntax_expression {
 	} elsif ($self->is_token_val( keyword => 'function' )) {
 		$self->next_token;
 		$expression = $self->parse_syntax_function_expression;
+
+	} elsif ($self->is_token_val( symbol => '{' )) {
+		$expression = $self->parse_syntax_table_expression;
+
 	} elsif ($self->is_token_type('symbol') and exists $lua_syntax_unary_operations_hash{$self->peek_token->[1]}) {
 		my $operation = $self->next_token->[1];
 		$expression = {
@@ -354,6 +359,7 @@ sub parse_syntax_prefix_expression {
 		my $identifier = $self->next_token->[1];
 		$expression = { type => 'identifier_expression', identifier => $identifier };
 	} else {
+		say $self->dump_at_current_offset;
 		$self->confess_at_current_offset('invalid prefix expression');
 	}
 
@@ -385,6 +391,49 @@ sub parse_syntax_prefix_expression {
 }
 
 
+sub parse_syntax_table_expression {
+	my ($self) = @_;
+
+	$self->assert_step_token_val( symbol => '{' );
+
+	my @table_fields;
+	until ($self->is_token_val( symbol => '}' )) {
+		if ($self->is_token_val( symbol => '[')) {
+			$self->next_token;
+			my $expression = $self->parse_syntax_expression;
+			$self->assert_step_token_val( symbol => ']' );
+			$self->assert_step_token_val( symbol => '=' );
+			push @table_fields, { type => 'expressive_field', key_expression => $expression, expression => $self->parse_syntax_expression };
+		} elsif ($self->is_token_type( 'identifier' ) and $self->is_token_val( symbol => '=', 1 )) {
+			my $identifier = $self->next_token->[1];
+			$self->assert_step_token_val( symbol => '=' );
+			push @table_fields, {
+				type => 'expressive_field',
+				key_expression => { type => 'string_constant', value => $identifier },
+				expression => $self->parse_syntax_expression,
+			};
+		} else {
+			push @table_fields, {
+				type => 'array_field',
+				expression => $self->parse_syntax_expression,
+			};
+		}
+
+		if ($self->is_token_val( symbol => ',' ) or $self->is_token_val( symbol => ';' )) {
+			$self->next_token;
+		} else {
+			last
+		}
+	}
+	$self->assert_step_token_val( symbol => '}' );
+
+	return {
+		type => 'table_expression',
+		table_fields => \@table_fields,
+	}
+}
+
+
 sub parse_syntax_expression_list {
 	my ($self) = @_;
 
@@ -411,8 +460,7 @@ sub parse_syntax_function_args_list {
 		$self->assert_step_token_val( symbol => ')' );
 
 	} elsif ($self->is_token_val( symbol => '{' )) {
-		# function call with table
-		...
+		push @args_list, $self->parse_syntax_table_expression;
 
 	} elsif ($self->is_token_type( 'literal_string' )) {
 		my $string = $self->next_token->[1];

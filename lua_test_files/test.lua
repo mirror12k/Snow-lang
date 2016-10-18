@@ -80,15 +80,35 @@
 -- local a = obj.foo'asdf'
 
 
-io.print('hey')
-a,b = 5, true
-fun = function ()
-	print()
-end
+-- io.print('hey')
+-- a,b = 5, true
+-- fun = function ()
+-- 	print()
+-- end
 
-a,b = (5 + 4)
-bar = (function()
-	break
-end)()
+-- a,b = (5 + 4)
+-- bar = (function()
+-- 	break
+-- end)()
+
+
+-- a = {}
+-- b = {
+-- 	3,
+-- 	4;
+-- 	5
+-- }
+-- c = {
+-- 	asdf = 'asdf',
+-- 	qwer = 'qwer',
+-- }
+-- d = {
+-- 	[5 + 4] = asdf + qwer,
+-- 	val = 15,
+-- 	5
+-- }
+
+
+print{5, 4, 3}
 
 

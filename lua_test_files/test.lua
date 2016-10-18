@@ -77,8 +77,18 @@
 
 -- local a = print()
 -- local a = obj:foo(5)
-local a = obj.foo'asdf'
+-- local a = obj.foo'asdf'
 
 
+io.print('hey')
+a,b = 5, true
+fun = function ()
+	print()
+end
+
+a,b = (5 + 4)
+bar = (function()
+	break
+end)()
 
 

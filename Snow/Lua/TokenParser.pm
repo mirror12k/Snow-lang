@@ -225,7 +225,14 @@ sub more_tokens {
 sub dump {
 	my ($self) = @_;
 
-	return join "\n", map { "[$_->[2]:$_->[3]] $_->[0] => <$_->[1]>" } @{$self->{code_tokens}};
+	return join "\n", map { "[$_->[2]:$_->[3]] $_->[0] => <$_->[1]>" } @{$self->{code_tokens}}
+}
+
+sub dump_at_current_offset {
+	my ($self) = @_;
+
+	my @tokens = @{$self->{code_tokens}};
+	return join "\n", map { "[$_->[2]:$_->[3]] $_->[0] => <$_->[1]>" } @tokens[$self->{code_tokens_index} .. $#tokens]
 }
 
 

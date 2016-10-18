@@ -23,7 +23,7 @@ sub parse {
 	$self->SUPER::parse($text);
 
 	$self->{syntax_tree} = $self->parse_syntax_block;
-	$self->confess_at_current_offset('more tokens found after end of code') if $self->more_tokens;
+	say $self->dump_at_current_offset and $self->confess_at_current_offset('more tokens found after end of code') if $self->more_tokens;
 
 	return $self->{syntax_tree}
 }
@@ -171,7 +171,7 @@ sub parse_syntax_statements {
 		$self->next_token;
 		if ($self->is_token_val( keyword => 'function' )) {
 			$self->next_token;
-			my $identifier = $self->assert_step_token_type('identifier')->[1];
+			my $identifier = { type => 'identifier_expression', identifier => $self->assert_step_token_type('identifier')->[1] };
 			push @statements, { type => 'variable_declaration_statement', names_list => [ $identifier ] };
 			push @statements, { type => 'assignment_statement', var_list => [ $identifier ], expression_list => [ $self->parse_syntax_function_expression ] };
 		} else {
@@ -188,6 +188,26 @@ sub parse_syntax_statements {
 		$self->next_token;
 		push @statements, { type => 'empty_statement' };
 
+	} elsif ($self->is_token_val( symbol => '(' ) or $self->is_token_type( 'identifier' )) {
+		my $prefix_expression = $self->parse_syntax_prefix_expression;
+		if ($prefix_expression->{type} eq 'function_call_expression' or $prefix_expression->{type} eq 'method_call_expression') {
+			push @statements, { type => 'call_statement', expression => $prefix_expression };
+		} elsif ($prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
+				or $prefix_expression->{type} eq 'expressive_access_expression') {
+			my @var_list = ($prefix_expression);
+			while ($self->is_token_val( symbol => ',' )) {
+				$self->next_token;
+				$prefix_expression = $self->parse_syntax_prefix_expression;
+				$self->confess_at_current_offset("invalid varlist prefix expression $prefix_expression->{type}") unless $prefix_expression->{type} eq 'identifier_expression'
+						or $prefix_expression->{type} eq 'access_expression' or $prefix_expression->{type} eq 'expressive_access_expression';
+				push @var_list, $prefix_expression;
+			}
+			$self->confess_at_current_offset("expected '=' after varlist") unless $self->is_token_val( symbol => '=' );
+			$self->next_token;
+			push @statements, { type => 'assignment_statement', var_list => \@var_list, expression_list => [ $self->parse_syntax_expression_list ] };
+		} else {
+			$self->confess_at_current_offset("unexpected prefix expression '$prefix_expression->{type}' (function call or variable assignment exected)");
+		}
 	}
 
 	return @statements
@@ -329,6 +349,7 @@ sub parse_syntax_prefix_expression {
 	if ($self->is_token_val( symbol => '(' )) {
 		$self->next_token;
 		$expression = { type => 'parenthesis_expression', expression => $self->parse_syntax_expression };
+		$self->assert_step_token_val( symbol => ')' );
 	} elsif ($self->is_token_type( 'identifier' )) {
 		my $identifier = $self->next_token->[1];
 		$expression = { type => 'identifier_expression', identifier => $identifier };
@@ -360,7 +381,6 @@ sub parse_syntax_prefix_expression {
 		} else {
 			return $expression;
 		}
-		warn "got $expression->{type}";
 	}
 }
 

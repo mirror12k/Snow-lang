@@ -153,3 +153,9 @@
 local a,b = 5, 'asdf'
 
 print(b, a)
+
+local a,b = 5
+
+
+print(a,b)
+

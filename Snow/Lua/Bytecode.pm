@@ -63,27 +63,28 @@ sub parse_bytecode_block {
 				$self->{current_local_scope}{$name} = $self->{current_local_index}++;
 				$locals_loaded++;
 			}
-			push @bytecode, xv => scalar @{$statement->{names_list}};
+			push @bytecode, xl => scalar @{$statement->{names_list}};
 			if (defined $statement->{expression_list}) {
 				push @bytecode, ss => undef;
 				push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
-				push @bytecode, ts => scalar @{$statement->{names_list}};
-				foreach my $name (reverse @{$statement->{names_list}}) {
+				# push @bytecode, ts => scalar @{$statement->{names_list}};
+				push @bytecode, rs => undef;
+				foreach my $name (@{$statement->{names_list}}) {
 					push @bytecode, sl => $self->{current_local_scope}{$name};
 				}
-				push @bytecode, ls => 0;
+				push @bytecode, ds => undef;
 			}
 		} elsif ($statement->{type} eq 'call_statement') {
 			push @bytecode, ss => undef;
 			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
-			push @bytecode, ls => 0;
+			push @bytecode, ds => undef;
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}
 	}
 
 	if ($locals_loaded > 0) {
-		push @bytecode, tv => $locals_loaded;
+		push @bytecode, tl => $locals_loaded;
 		$self->{current_local_index} -= $locals_loaded;
 	}
 
@@ -101,10 +102,13 @@ sub parse_bytecode_expression_list {
 	return unless @$expression_list;
 
 	my @bytecode;
-	foreach my $i (0 .. $#$expression_list - 1) {
+	if (@$expression_list > 1) {
 		push @bytecode, ss => undef;
-		push @bytecode, $self->parse_bytecode_expression($expression_list->[$i]);
-		push @bytecode, ls => 1;
+		foreach my $i (0 .. $#$expression_list - 1) {
+			push @bytecode, $self->parse_bytecode_expression($expression_list->[$i]);
+			push @bytecode, ts => $i + 1;
+		}
+		push @bytecode, ls => @$expression_list - 1;
 	}
 	push @bytecode, $self->parse_bytecode_expression($expression_list->[-1]);
 
@@ -150,7 +154,7 @@ sub parse_bytecode_identifier {
 
 	# TODO implement closure load
 
-	return gl => $identifier
+	return lg => $identifier
 }
 
 sub dump_bytecode {

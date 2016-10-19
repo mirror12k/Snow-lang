@@ -41,7 +41,7 @@ sub load_libraries {
 
 	$self->{global_scope}{print} = [ function => { is_native => 1, function => sub {
 		my ($self, @args) = @_;
-		say "print: ", join "\t", map $_->[1] // 'nil', @args;
+		say "print: ", join "\t", map "$_->[1]", @args;
 		return return => $lua_nil_constant
 	} } ];
 }
@@ -79,20 +79,25 @@ sub execute_bytecode {
 		} elsif ($op eq 'ss') {
 			push @saved_stacks, [ @stack ];
 			@stack = ();
+		} elsif ($op eq 'rs') {
+			@stack = reverse @stack;
 		} elsif ($op eq 'ts') {
 			@stack = @stack[0 .. ($arg - 1)];
+		} elsif ($op eq 'ds') {
+			# say Dumper [ @stack[0 .. $arg] ];
+			@stack = @{pop @saved_stacks};
 		} elsif ($op eq 'ls') {
 			# say Dumper [ @stack[0 .. $arg] ];
 			@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
-		} elsif ($op eq 'gl') {
+		} elsif ($op eq 'lg') {
 			push @stack, $self->{global_scope}{$arg} // $lua_nil_constant;
 		} elsif ($op eq 'sl') {
-			$locals[$arg] = pop @stack;
+			$locals[$arg] = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'll') {
 			push @stack, $locals[$arg];
-		} elsif ($op eq 'xv') {
+		} elsif ($op eq 'xl') {
 			push @locals, $lua_nil_constant foreach 1 .. $arg;
-		} elsif ($op eq 'tv') {
+		} elsif ($op eq 'tl') {
 			@locals = @locals[0 .. (-$arg - 1)];
 		} elsif ($op eq 'fc') {
 			my @args = @stack;

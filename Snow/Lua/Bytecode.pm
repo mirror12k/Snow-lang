@@ -39,9 +39,9 @@ sub parse_bytecode_block {
 		# 	return rt => [ $self->interpret_expression_list($statement->{expression_list}) ];
 		# } els
 		if ($statement->{type} eq 'call_statement') {
-			push @bytecode, ss => 0;
+			push @bytecode, ss => undef;
 			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
-			push @bytecode, ls => 0;
+			push @bytecode, ls => -1;
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}
@@ -59,9 +59,9 @@ sub parse_bytecode_expression_list {
 
 	my @bytecode;
 	foreach my $i (0 .. $#$expression_list - 1) {
-		push @bytecode, ss => 0;
+		push @bytecode, ss => undef;
 		push @bytecode, $self->parse_bytecode_expression($expression_list->[$i]);
-		push @bytecode, ls => 1;
+		push @bytecode, ls => 0;
 	}
 	push @bytecode, $self->parse_bytecode_expression($expression_list->[-1]);
 
@@ -87,7 +87,7 @@ sub parse_bytecode_expression {
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
 			$self->parse_bytecode_expression($expression->{expression}),
-			ss => 1,
+			ss => undef,
 			$self->parse_bytecode_expression_list($expression->{args_list}),
 			fc => undef
 	} else {

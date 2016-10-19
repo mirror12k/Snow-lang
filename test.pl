@@ -11,14 +11,17 @@ use Snow::Lua::TokenParser;
 use Snow::Lua::SyntaxParser;
 use Snow::Lua::SyntaxInterpreter;
 use Snow::Lua::Bytecode;
+use Snow::Lua::BytecodeInterpreter;
 
 
 
 
 my $file = shift // die "file required";
 
-my $parser = Snow::Lua::Bytecode->new(file => $file);
-say $parser->dump_bytecode;
+my $int = Snow::Lua::BytecodeInterpreter->new(file => $file);
+$int->execute;
+# my $parser = Snow::Lua::Bytecode->new(file => $file);
+# say $parser->dump_bytecode;
 # say Dumper $parser->{bytecode_chunk};
 
 

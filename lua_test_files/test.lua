@@ -143,5 +143,13 @@
 
 
 
-print (5, 4, 3, nil, true, 'asdf')
+-- print (5, 4, 3, nil, true, 'asdf')
 
+-- print(print())
+
+-- ;(print)('hello world!')
+
+
+local a,b = 5, 'asdf'
+
+print(b, a)

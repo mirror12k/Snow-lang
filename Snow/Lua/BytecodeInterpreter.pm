@@ -41,7 +41,8 @@ sub load_libraries {
 
 	$self->{global_scope}{print} = [ function => { is_native => 1, function => sub {
 		my ($self, @args) = @_;
-		say "print: ", join "\t", map $_->[1], @args;
+		say "print: ", join "\t", map $_->[1] // 'nil', @args;
+		return return => $lua_nil_constant
 	} } ];
 }
 
@@ -63,6 +64,7 @@ sub execute_bytecode {
 
 	my @saved_stacks;
 	my @stack;
+	my @locals;
 
 	while ($i < @$bytecode_chunk) {
 		my $op = $bytecode_chunk->[$i++];
@@ -77,17 +79,29 @@ sub execute_bytecode {
 		} elsif ($op eq 'ss') {
 			push @saved_stacks, [ @stack ];
 			@stack = ();
+		} elsif ($op eq 'ts') {
+			@stack = @stack[0 .. ($arg - 1)];
 		} elsif ($op eq 'ls') {
 			# say Dumper [ @stack[0 .. $arg] ];
-			@stack = (@{pop @saved_stacks}, @stack[0 .. $arg]);
+			@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
 		} elsif ($op eq 'gl') {
 			push @stack, $self->{global_scope}{$arg} // $lua_nil_constant;
+		} elsif ($op eq 'sl') {
+			$locals[$arg] = pop @stack;
+		} elsif ($op eq 'll') {
+			push @stack, $locals[$arg];
+		} elsif ($op eq 'xv') {
+			push @locals, $lua_nil_constant foreach 1 .. $arg;
+		} elsif ($op eq 'tv') {
+			@locals = @locals[0 .. (-$arg - 1)];
 		} elsif ($op eq 'fc') {
 			my @args = @stack;
 			@stack = @{pop @saved_stacks};
 			my $function = pop @stack;
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
-			$function->[1]{function}->($self, @args);
+			my ($status, @data) = $function->[1]{function}->($self, @args);
+			return $status, @data if $status ne 'return';
+			push @stack, @data
 		} else {
 			die "unimplemented bytecode type $op";
 		}

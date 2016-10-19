@@ -221,7 +221,7 @@ sub parse_syntax_return_statement {
 	$self->next_token;
 	return {
 		type => 'return_statement',
-		expression => $self->parse_syntax_expression,
+		expression_list => [ $self->parse_syntax_expression_list ],
 	}
 }
 

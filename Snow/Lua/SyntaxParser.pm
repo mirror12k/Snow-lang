@@ -171,9 +171,13 @@ sub parse_syntax_statements {
 		$self->next_token;
 		if ($self->is_token_val( keyword => 'function' )) {
 			$self->next_token;
-			my $identifier = { type => 'identifier_expression', identifier => $self->assert_step_token_type('identifier')->[1] };
+			my $identifier = $self->assert_step_token_type('identifier')->[1];
 			push @statements, { type => 'variable_declaration_statement', names_list => [ $identifier ] };
-			push @statements, { type => 'assignment_statement', var_list => [ $identifier ], expression_list => [ $self->parse_syntax_function_expression ] };
+			push @statements, {
+				type => 'assignment_statement',
+				var_list => [ { type => 'identifier_expression', identifier => $identifier } ],
+				expression_list => [ $self->parse_syntax_function_expression ]
+			};
 		} else {
 			my $names_list = [ $self->parse_syntax_names_list ];
 			my $expression_list;

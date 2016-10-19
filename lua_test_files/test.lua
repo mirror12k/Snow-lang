@@ -113,6 +113,14 @@
 
 
 
-return nil
+-- return nil
+
+
+local a,b,c,d,e,f = 5, 1
+
+
+
+return a,b,c
+
 
 

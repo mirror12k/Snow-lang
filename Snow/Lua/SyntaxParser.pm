@@ -320,6 +320,7 @@ sub parse_syntax_more_expression {
 
 	while (1) {
 		if ($self->is_token_type('symbol') and exists $lua_syntax_binary_operations_hash{$self->peek_token->[1]}) {
+			# TODO: fix precedence
 			my $operation = $self->next_token->[1];
 			$expression = {
 				type => 'binary_expression',

@@ -109,6 +109,8 @@ sub interpret_expression {
 		push @res, [ number => $expression->{value} ];
 	} elsif ($expression->{type} eq 'string_constant') {
 		push @res, [ string => $expression->{value} ];
+	} elsif ($expression->{type} eq 'parenthesis_expression') {
+		push @res, $self->interpret_expression($expression->{expression});
 	} elsif ($expression->{type} eq 'function_expression') {
 		# TODO: closures
 		push @res, [ function => { args_list => $expression->{args_list}, block => $expression->{block} } ];
@@ -134,7 +136,9 @@ sub invoke_function {
 	if ($function->{is_native}) {
 		my @ret = $function->{function}->($self, @args);
 	} else {
-		return $self->interpret_scope($function->{block}, $function->{args_list}, @args);
+		my ($op, $data) = $self->interpret_scope($function->{block}, $function->{args_list}, @args);
+		return $data if defined $op and $op eq 'return';
+		return $lua_nil_constant
 	}
 }
 

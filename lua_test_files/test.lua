@@ -120,12 +120,28 @@
 -- return a,b,c
 
 
-local f = function () print('inside f!') end
+-- local f = function () print('inside f!') end
 
 
-print(5, 4)
-f()
+-- print(5, 4)
+-- f()
+
+
+-- print((function () return 'hello!' end)())
 
 
 
+
+-- goto my_stuff
+
+-- ::my_stuff::
+-- if false then
+-- 	print('hey')
+-- end
+
+-- asdf(print('qwer'))
+
+
+
+print (5, 4, 3, nil, true, 'asdf')
 

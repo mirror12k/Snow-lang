@@ -10,14 +10,17 @@ use Data::Dumper;
 use Snow::Lua::TokenParser;
 use Snow::Lua::SyntaxParser;
 use Snow::Lua::SyntaxInterpreter;
+use Snow::Lua::Bytecode;
 
 
 
 
 my $file = shift // die "file required";
 
-my $parser = Snow::Lua::SyntaxInterpreter->new(file => $file);
-$parser->interpret;
+my $parser = Snow::Lua::Bytecode->new(file => $file);
+say $parser->dump_bytecode;
+# say Dumper $parser->{bytecode_chunk};
+
 
 # while ($parser->more_tokens) {
 # 	say Dumper $parser->next_token;

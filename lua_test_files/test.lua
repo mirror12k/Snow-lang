@@ -150,12 +150,20 @@
 -- ;(print)('hello world!')
 
 
-local a,b = 5, 'asdf'
+-- do
+-- 	local a,b = 5, 'asdf'
+-- 	print(b, a)
+-- 	local a,b = 5
+-- 	print(a,b)
+-- end
+-- print(a,b)
+-- return true
 
-print(b, a)
 
-local a,b = 5
+if true then
+	print('hello world!')
+end
 
-
-print(a,b)
-
+if nil then
+	print('hello world!')
+end

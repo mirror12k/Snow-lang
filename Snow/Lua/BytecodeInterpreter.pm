@@ -52,7 +52,11 @@ sub execute {
 	my ($self, $bytecode_chunk) = @_;
 	$bytecode_chunk = $bytecode_chunk // $self->{bytecode_chunk};
 
-	$self->execute_bytecode($bytecode_chunk);
+	my ($status, @data) = $self->execute_bytecode($bytecode_chunk);
+
+	if ($status eq 'error') {
+		warn "lua runtime error: @data";
+	}
 }
 
 
@@ -74,7 +78,16 @@ sub execute_bytecode {
 		# say Dumper \@stack;
 		# say "$op";
 
-		if ($op eq 'ps') {
+		if ($op eq 'bt') {
+			my $val = pop @stack;
+			if ($val->[0] eq 'nil') {
+				push @stack, [ bool => 0 ];
+			} elsif ($val->[0] eq 'bool') {
+				push @stack, $val;
+			} else {
+				push @stack, [ bool => 1 ];
+			}
+		} elsif ($op eq 'ps') {
 			push @stack, $arg;
 		} elsif ($op eq 'ss') {
 			push @saved_stacks, [ @stack ];
@@ -107,11 +120,18 @@ sub execute_bytecode {
 			my ($status, @data) = $function->[1]{function}->($self, @args);
 			return $status, @data if $status ne 'return';
 			push @stack, @data
+		} elsif ($op eq 'fj') {
+			$i += $arg if (pop @stack)->[1] == 0;
+		} elsif ($op eq 'rt') {
+			return return => @stack
 		} else {
 			die "unimplemented bytecode type $op";
 		}
 	}
 }
+
+
+
 
 
 

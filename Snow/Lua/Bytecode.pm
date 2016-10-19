@@ -53,11 +53,10 @@ sub parse_bytecode_block {
 
 	my @bytecode;
 	foreach my $statement (@$block) {
-		# if ($statement->{type} eq 'return_statement') {
-		# 	return rt => [ $self->interpret_expression_list($statement->{expression_list}) ];
-		# } els
 		if ($statement->{type} eq 'empty_statement') {
 			# nothing
+		} elsif ($statement->{type} eq 'block_statement') {
+			push @bytecode, $self->parse_bytecode_block($statement->{block});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
 			foreach my $name (@{$statement->{names_list}}) {
 				$self->{current_local_scope}{$name} = $self->{current_local_index}++;
@@ -78,6 +77,15 @@ sub parse_bytecode_block {
 			push @bytecode, ss => undef;
 			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
 			push @bytecode, ds => undef;
+		} elsif ($statement->{type} eq 'if_statement') {
+			my @block = $self->parse_bytecode_block($statement->{block});
+			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
+			push @bytecode, bt => undef;
+			push @bytecode, fj => scalar @block;
+			push @bytecode, @block;
+		} elsif ($statement->{type} eq 'return_statement') {
+			push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
+			push @bytecode, rt => undef;
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}

@@ -22,30 +22,49 @@ sub new {
 	$self->{local_scope_stack} = []; # local scopes are stored in reverse order in this stack (0 being the deepest, -1 being the shallowest)
 	$self->{current_local_scope} = undef;
 
+	$self->{global_scope}{print} = [ function => { is_native => 1, function => sub {
+		my ($self, @args) = @_;
+		say "print: ", join "\t", map $_->[1], @args;
+	} } ];
+
 	return $self;
 }
 
 
 sub interpret {
 	my ($self) = @_;
-	my @res = $self->interpret_block($self->{syntax_tree});
+	my @res = $self->interpret_scope($self->{syntax_tree});
 	say "main returned: ", Dumper @res;
+}
+
+sub interpret_scope {
+	my ($self, $block, $args_list, @args) = @_;
+
+	unshift @{$self->{local_scope_stack}}, $self->{current_local_scope} if defined $self->{current_local_scope};
+	$self->{current_local_scope} = {};
+
+	if (defined $args_list) {
+		$self->{current_local_scope}{$_} = shift @args foreach @$args_list;
+	}
+
+	my ($op, $data) = $self->interpret_block($block);
+
+	# say Dumper $self->{current_local_scope};
+	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
+
+	return $op, $data
 }
 
 sub interpret_block {
 	my ($self, $block) = @_;
 
-	unshift @{$self->{local_scope_stack}}, $self->{current_local_scope} if defined $self->{current_local_scope};
-	$self->{current_local_scope} = {};
-
-	my @res;
-
 	my $i = 0;
 	while ($i < @$block) {
-		my $statement = $block->[$i];
+		my $statement = $block->[$i++];
 		if ($statement->{type} eq 'return_statement') {
-			@res = (return => [ $self->interpret_expression_list($statement->{expression_list}) ]);
-			last
+			return return => [ $self->interpret_expression_list($statement->{expression_list}) ];
+		} elsif ($statement->{type} eq 'call_statement') {
+			$self->interpret_expression($statement->{expression});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
 			if (defined $statement->{expression_list}) {
 				my @data = $self->interpret_expression_list($statement->{expression_list});
@@ -60,17 +79,14 @@ sub interpret_block {
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}
-		$i++;
 	}
-
-	# say Dumper $self->{current_local_scope};
-	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
-
-	return @res
+	return
 }
 
 sub interpret_expression_list {
 	my ($self, $expression_list) = @_;
+
+	return unless @$expression_list;
 
 	my @res;
 	foreach my $i (0 .. $#$expression_list - 1) {
@@ -98,11 +114,28 @@ sub interpret_expression {
 		push @res, [ function => { args_list => $expression->{args_list}, block => $expression->{block} } ];
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		push @res, $self->get_variable($expression->{identifier});
+	} elsif ($expression->{type} eq 'function_call_expression') {
+		my $val = ( $self->interpret_expression($expression->{expression}) )[0];
+		die "not a function" unless $val->[0] eq 'function';
+		my $function = $val->[1];
+		my @args = $self->interpret_expression_list($expression->{args_list});
+		push @res, $self->invoke_function($function, @args);
 	} else {
 		die "unimplemented expression type $expression->{type}";
 	}
 
 	return @res
+}
+
+
+sub invoke_function {
+	my ($self, $function, @args) = @_;
+
+	if ($function->{is_native}) {
+		my @ret = $function->{function}->($self, @args);
+	} else {
+		return $self->interpret_scope($function->{block}, $function->{args_list}, @args);
+	}
 }
 
 

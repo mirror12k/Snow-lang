@@ -116,11 +116,16 @@
 -- return nil
 
 
-local a,b,c,d,e,f = 5, 1
+-- local a,b,c,d,e,f = 5, 1
+-- return a,b,c
 
 
+local f = function () print('inside f!') end
 
-return a,b,c
+
+print(5, 4)
+f()
+
 
 
 

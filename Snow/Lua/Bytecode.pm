@@ -40,6 +40,8 @@ sub parse_bytecode_chunk {
 	$self->{local_label_stack} = [];
 	$self->{current_local_labels} = undef;
 
+	$self->{current_break_label} = undef;
+
 	$self->{current_jump_index} = 0;
 
 
@@ -79,6 +81,9 @@ sub parse_bytecode_block {
 			push @bytecode, _label => $self->{current_local_labels}{$statement->{identifier}};
 		} elsif ($statement->{type} eq 'goto_statement') {
 			push @bytecode, aj => $self->parse_bytecode_user_label($statement->{identifier});
+		} elsif ($statement->{type} eq 'break_statement') {
+			die "break used outside of a breakable location" unless defined $self->{current_break_label};
+			push @bytecode, aj => $self->{current_break_label};
 		} elsif ($statement->{type} eq 'block_statement') {
 			push @bytecode, $self->parse_bytecode_block($statement->{block});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
@@ -108,15 +113,23 @@ sub parse_bytecode_block {
 		} elsif ($statement->{type} eq 'until_statement') {
 			# TODO support local variable application in the expression part (WHY lua???)
 			my $repeat_label = "repeat_" . $self->{current_jump_index}++;
+			my $end_label = "repeat_end_" . $self->{current_jump_index}++;
+			my $last_break_label = $self->{current_break_label};
+			$self->{current_break_label} = $end_label;
 			push @bytecode,
 				_label => $repeat_label,
 				$self->parse_bytecode_block($statement->{block}),
 				$self->parse_bytecode_expression($statement->{expression}),
 				bt => undef,
 				fj => $repeat_label,
+				_label => $end_label,
+			;
+			$self->{current_break_label} = $last_break_label;
 		} elsif ($statement->{type} eq 'while_statement') {
 			my $expression_label = "while_" . $self->{current_jump_index}++;
-			my $end_label = "end_" . $self->{current_jump_index}++;
+			my $end_label = "while_end_" . $self->{current_jump_index}++;
+			my $last_break_label = $self->{current_break_label};
+			$self->{current_break_label} = $end_label;
 			push @bytecode,
 				_label => $expression_label,
 				$self->parse_bytecode_expression($statement->{expression}),
@@ -125,6 +138,8 @@ sub parse_bytecode_block {
 				$self->parse_bytecode_block($statement->{block}),
 				aj => $expression_label,
 				_label => $end_label,
+			;
+			$self->{current_break_label} = $last_break_label;
 		} elsif ($statement->{type} eq 'if_statement') {
 			my $branch_label = "branch_" . $self->{current_jump_index}++;
 			push @bytecode,

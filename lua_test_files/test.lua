@@ -270,16 +270,29 @@
 -- print(a,b,c,d)
 
 
-goto lol
-::start::
+-- goto lol
+-- ::start::
 
-print('hello world')
+-- print('hello world')
 
-goto ende
-::lol::
+-- goto ende
+-- ::lol::
 
-print('goodbye world')
-goto start
+-- print('goodbye world')
+-- goto start
 
 
-::ende::
+-- ::ende::
+
+while true do
+	print("in while")
+	while true do
+		print("helloworld!")
+		break
+		print("nope!")
+	end
+	print("leaving while")
+	break
+	print("nope")
+end
+

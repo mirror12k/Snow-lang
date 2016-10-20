@@ -284,15 +284,29 @@
 
 -- ::ende::
 
-while true do
-	print("in while")
-	while true do
-		print("helloworld!")
-		break
-		print("nope!")
-	end
-	print("leaving while")
-	break
-	print("nope")
+-- while true do
+-- 	print("in while")
+-- 	while true do
+-- 		print("helloworld!")
+-- 		break
+-- 		print("nope!")
+-- 	end
+-- 	print("leaving while")
+-- 	break
+-- 	print("nope")
+-- end
+
+
+-- print(5 <= 'a')
+
+
+-- print(-nil)
+-- print(-false)
+-- print(-'5')
+
+local a = 0
+while a ~= -5 do
+	a = a - 1
+	print(a)
 end
 

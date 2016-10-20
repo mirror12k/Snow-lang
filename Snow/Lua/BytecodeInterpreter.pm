@@ -78,9 +78,7 @@ sub execute_bytecode {
 		# say Dumper \@stack;
 		# say "$op";
 
-		if ($op eq 'bt') {
-			push @stack, $self->cast_bool(pop @stack);
-		} elsif ($op eq 'ps') {
+		if ($op eq 'ps') {
 			push @stack, $arg;
 		} elsif ($op eq 'ss') {
 			push @saved_stacks, [ @stack ];
@@ -90,10 +88,8 @@ sub execute_bytecode {
 		} elsif ($op eq 'ts') {
 			@stack = @stack[0 .. ($arg - 1)];
 		} elsif ($op eq 'ds') {
-			# say Dumper [ @stack[0 .. $arg] ];
 			@stack = @{pop @saved_stacks};
 		} elsif ($op eq 'ls') {
-			# say Dumper [ @stack[0 .. $arg] ];
 			@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
 
 		} elsif ($op eq 'lg') {
@@ -126,13 +122,19 @@ sub execute_bytecode {
 		} elsif ($op eq 'rt') {
 			return return => @stack
 
+		} elsif ($op eq 'bt') {
+			push @stack, $self->cast_bool(pop @stack);
+			
 		} elsif ($op eq 'un') {
 			if ($arg eq 'not') {
 				push @stack, [ bool => not $self->cast_bool(pop @stack)->[1] ];
 			} elsif ($arg eq '#') {
 				... # unary table length
 			} elsif ($arg eq '-') {
-				... # unary numeric negation
+				my $val = pop @stack;
+				my $num = $self->cast_number($val);
+				return error => "attempt to perform arithmetic on a $val->[0] value" if $num == $lua_nil_constant;
+				push @stack, [ number => -$num->[1] ];
 			} elsif ($arg eq '~') {
 				... # unary bitwise not
 			} else {
@@ -145,17 +147,43 @@ sub execute_bytecode {
 			} elsif ($arg eq 'and') {
 				...
 			} elsif ($arg eq '<') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] < $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] lt $val2->[1] ] }
+				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '>') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] > $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] gt $val2->[1] ] }
+				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '<=') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] <= $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] le $val2->[1] ] }
+				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '>=') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] >= $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] ge $val2->[1] ] }
+				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '~=') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				if ($val1 == $val2) { push @stack, [ bool => 0 ] }
+				elsif ($val1->[0] eq $val2->[0] and $val1->[0] eq 'string') { push @stack, [ bool => $val1->[1] ne $val2->[1] ] }
+				elsif ($val1->[0] eq $val2->[0]) { push @stack, [ bool => $val1->[1] != $val2->[1] ] }
+				else { push @stack, [ bool => 1 ] }
 			} elsif ($arg eq '==') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				if ($val1 == $val2) { push @stack, [ bool => 1 ] }
+				elsif ($val1->[0] eq $val2->[0] and $val1->[0] eq 'string') { push @stack, [ bool => $val1->[1] eq $val2->[1] ] }
+				elsif ($val1->[0] eq $val2->[0]) { push @stack, [ bool => $val1->[1] == $val2->[1] ] }
+				else { push @stack, [ bool => 0 ] }
 			} elsif ($arg eq '|') {
 				...
 			} elsif ($arg eq '~') {

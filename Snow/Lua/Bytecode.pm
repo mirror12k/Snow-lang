@@ -140,6 +140,21 @@ sub parse_bytecode_block {
 				_label => $end_label,
 			;
 			$self->{current_break_label} = $last_break_label;
+		# } elsif ($statement->{type} eq 'for_statement') {
+		# 	my $expression_label = "for_" . $self->{current_jump_index}++;
+		# 	my $end_label = "for_end_" . $self->{current_jump_index}++;
+		# 	my $last_break_label = $self->{current_break_label};
+		# 	$self->{current_break_label} = $end_label;
+		# 	push @bytecode,
+		# 		$self->parse_bytecode_expression($statement->{expression_start}),
+		# 		_label => $expression_label,
+		# 		bt => undef,
+		# 		fj => $end_label,
+		# 		$self->parse_bytecode_block($statement->{block}),
+		# 		aj => $expression_label,
+		# 		_label => $end_label,
+		# 	;
+		# 	$self->{current_break_label} = $last_break_label;
 		} elsif ($statement->{type} eq 'if_statement') {
 			my $branch_label = "branch_" . $self->{current_jump_index}++;
 			push @bytecode,

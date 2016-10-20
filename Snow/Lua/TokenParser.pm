@@ -60,6 +60,12 @@ our @lua_keywords = qw/
 /;
 
 our @lua_syntax_tokens = (qw#
+	<<
+	>>
+	==
+	~=
+	<=
+	>=
 	+
 	-
 	*
@@ -70,12 +76,6 @@ our @lua_syntax_tokens = (qw#
 	&
 	~
 	|
-	<<
-	>>
-	==
-	~=
-	<=
-	>=
 	<
 	>
 	=

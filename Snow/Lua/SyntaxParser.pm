@@ -124,6 +124,7 @@ sub parse_syntax_statements {
 		$self->assert_step_token_val(keyword => 'do');
 		push @statements, {
 			type => 'for_statement',
+			identifier => $identifier,
 			expression_start => $expression_start,
 			expression_end => $expression_end,
 			expression_step => $expression_step,

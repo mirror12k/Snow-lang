@@ -304,9 +304,15 @@
 -- print(-false)
 -- print(-'5')
 
-local a = 0
-while a ~= -5 do
-	a = a - 1
-	print(a)
-end
+-- local a = 0
+-- while a ~= -5 do
+-- 	a = a - 1
+-- 	print(a)
+-- end
+
+
+for i = 1, 5 do print(i) end
+for i = 5, 1, -1 do print(i) end
+for i = 10, 35, 10 do print(i) end
+for i = 35, 10, -10 do print(i) end
 

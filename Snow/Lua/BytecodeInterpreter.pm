@@ -80,6 +80,8 @@ sub execute_bytecode {
 
 		if ($op eq 'ps') {
 			push @stack, $arg;
+		} elsif ($op eq 'ms') {
+			push @stack, $stack[-1];
 		} elsif ($op eq 'ss') {
 			push @saved_stacks, [ @stack ];
 			@stack = ();
@@ -121,6 +123,13 @@ sub execute_bytecode {
 			$i += $arg;
 		} elsif ($op eq 'rt') {
 			return return => @stack
+
+		} elsif ($op eq 'fr') {
+			if ($stack[-1][1] > 0) {
+				push @stack, [ bool => $locals[$arg][1] <= $stack[-2][1] ];
+			} else {
+				push @stack, [ bool => $locals[$arg][1] >= $stack[-2][1] ];
+			}
 
 		} elsif ($op eq 'bt') {
 			push @stack, $self->cast_bool(pop @stack);

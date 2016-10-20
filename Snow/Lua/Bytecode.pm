@@ -50,6 +50,7 @@ sub parse_bytecode_block {
 	$self->{current_local_scope} = {};
 
 	my $locals_loaded = 0;
+	# need to precompute how many locals are loaded in order to properly support goto
 
 	my @bytecode;
 	foreach my $statement (@$block) {
@@ -77,12 +78,31 @@ sub parse_bytecode_block {
 			push @bytecode, ss => undef;
 			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
 			push @bytecode, ds => undef;
+		} elsif ($statement->{type} eq 'while_statement') {
+			my @expression = $self->parse_bytecode_expression($statement->{expression});
+			my @block = $self->parse_bytecode_block($statement->{block});
+			push @bytecode, @expression;
+			push @bytecode, bt => undef;
+			push @bytecode, fj => 2 + scalar @block;
+			push @bytecode, @block;
+			push @bytecode, aj => - scalar (@expression) -6 - scalar @block;
 		} elsif ($statement->{type} eq 'if_statement') {
 			my @block = $self->parse_bytecode_block($statement->{block});
 			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
 			push @bytecode, bt => undef;
-			push @bytecode, fj => scalar @block;
-			push @bytecode, @block;
+
+			if (defined $statement->{branch}) {
+				my $brach_statement = $statement->{branch};
+				my @branch_block = $self->parse_bytecode_block($brach_statement->{block});
+				push @bytecode, fj => 2 + scalar @block;
+				push @bytecode, @block;
+				push @bytecode, aj => scalar @branch_block;
+				push @bytecode, @branch_block;
+			} else {
+				push @bytecode, fj => scalar @block;
+				push @bytecode, @block;
+			}
+
 		} elsif ($statement->{type} eq 'return_statement') {
 			push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
 			push @bytecode, rt => undef;

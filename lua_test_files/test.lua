@@ -160,10 +160,29 @@
 -- return true
 
 
+-- if true then
+-- 	print('hello world!')
+-- end
+
+-- if nil then
+-- 	print('hello world!')
+-- end
+
+-- while false do
+-- 	print('hello world')
+-- end
+
+
 if true then
-	print('hello world!')
+	print("branch 1")
+else
+	print('branch 2')
 end
 
 if nil then
-	print('hello world!')
+	print("branch 3")
+else
+	print('branch 4')
 end
+
+

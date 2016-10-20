@@ -119,9 +119,11 @@ sub execute_bytecode {
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
 			my ($status, @data) = $function->[1]{function}->($self, @args);
 			return $status, @data if $status ne 'return';
-			push @stack, @data
+			push @stack, @data;
 		} elsif ($op eq 'fj') {
 			$i += $arg if (pop @stack)->[1] == 0;
+		} elsif ($op eq 'aj') {
+			$i += $arg;
 		} elsif ($op eq 'rt') {
 			return return => @stack
 		} else {

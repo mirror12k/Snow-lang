@@ -150,7 +150,11 @@ sub execute_bytecode {
 			} elsif ($arg eq '>>') {
 				...
 			} elsif ($arg eq '..') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				return error => "attempt to concatenate a $val1->[0] value" if $val1->[0] ne 'string' and $val1->[0] ne 'number';
+				return error => "attempt to concatenate a $val2->[0] value" if $val2->[0] ne 'string' and $val2->[0] ne 'number';
+				push @stack, [ string => $val1->[1] . $val2->[1] ];
 			} elsif ($arg eq '+') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
@@ -160,15 +164,45 @@ sub execute_bytecode {
 				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
 				push @stack, [ number => $num1->[1] + $num2->[1] ];
 			} elsif ($arg eq '-') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				my $num1 = $self->cast_number($val1);
+				my $num2 = $self->cast_number($val2);
+				return error => "attempt to perform arithmetic on a $val1->[0] value" if $num1 == $lua_nil_constant;
+				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
+				push @stack, [ number => $num1->[1] - $num2->[1] ];
 			} elsif ($arg eq '*') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				my $num1 = $self->cast_number($val1);
+				my $num2 = $self->cast_number($val2);
+				return error => "attempt to perform arithmetic on a $val1->[0] value" if $num1 == $lua_nil_constant;
+				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
+				push @stack, [ number => $num1->[1] * $num2->[1] ];
 			} elsif ($arg eq '/') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				my $num1 = $self->cast_number($val1);
+				my $num2 = $self->cast_number($val2);
+				return error => "attempt to perform arithmetic on a $val1->[0] value" if $num1 == $lua_nil_constant;
+				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
+				push @stack, [ number => $num1->[1] / $num2->[1] ];
 			} elsif ($arg eq '//') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				my $num1 = $self->cast_number($val1);
+				my $num2 = $self->cast_number($val2);
+				return error => "attempt to perform arithmetic on a $val1->[0] value" if $num1 == $lua_nil_constant;
+				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
+				push @stack, [ number => int ($num1->[1] / $num2->[1]) ];
 			} elsif ($arg eq '%') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				my $num1 = $self->cast_number($val1);
+				my $num2 = $self->cast_number($val2);
+				return error => "attempt to perform arithmetic on a $val1->[0] value" if $num1 == $lua_nil_constant;
+				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
+				push @stack, [ number => $num1->[1] % $num2->[1] ];
 			} else {
 				die "unimplemented bytecode unary operation type $arg";
 			}

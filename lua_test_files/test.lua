@@ -192,11 +192,11 @@
 -- until false
 
 
-local b,c
+-- local b,c
 
-a, b = 5, 4, 3
+-- a, b = 5, 4, 3
 
-print(a,b)
+-- print(a,b)
 
 -- print(tonumber(nil), tonumber(false), tonumber(true), tonumber(''), tonumber('5'), tonumber({}))
 -- print(nil or 5, false or 5, true or 5, '' or 5, '5' or 5, {} or 5)
@@ -205,8 +205,29 @@ print(a,b)
 -- print(5+true)
 -- print(5+false)
 -- print(5+'')
-print(5+'5')
-print(5+'a')
+-- print(5+'5')
+-- print(5+'a')
 -- print(5+{})
 -- print(5+function () end)
+
+-- print (5 - 3)
+-- print (5 * 3)
+-- print (5 / 3)
+-- print (5 % 3)
+-- print (5 // 3)
+
+
+
+-- print ('a' .. nil)
+-- print ('a' .. false)
+-- print ('a' .. true)
+print ('a' .. 5)
+print (4 .. 5)
+print ('a' .. 'asdf')
+-- print ('a' .. {})
+-- print ('a' .. function () end)
+
+
+
+
 

@@ -105,9 +105,27 @@ sub execute_bytecode {
 		} elsif ($op eq 'sl') {
 			$locals[$arg] = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'xl') {
-			push @locals, $lua_nil_constant foreach 1 .. $arg;
-		} elsif ($op eq 'tl') {
-			@locals = @locals[0 .. (-$arg - 1)];
+			@locals = ($lua_nil_constant) x $arg;
+			# push @locals, $lua_nil_constant foreach 1 .. $arg;
+		# } elsif ($op eq 'tl') {
+		# 	@locals = @locals[0 .. (-$arg - 1)];
+
+		} elsif ($op eq 'fc') {
+			my @args = @stack;
+			@stack = @{pop @saved_stacks};
+			my $function = pop @stack;
+			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
+			my ($status, @data) = $function->[1]{function}->($self, @args);
+			return $status, @data if $status ne 'return';
+			push @stack, @data;
+		} elsif ($op eq 'fj') {
+			$i += $arg if (pop @stack)->[1] == 0;
+		} elsif ($op eq 'tj') {
+			$i += $arg if (pop @stack)->[1] == 1;
+		} elsif ($op eq 'aj') {
+			$i += $arg;
+		} elsif ($op eq 'rt') {
+			return return => @stack
 
 		} elsif ($op eq 'un') {
 			if ($arg eq 'not') {
@@ -207,22 +225,6 @@ sub execute_bytecode {
 				die "unimplemented bytecode unary operation type $arg";
 			}
 
-		} elsif ($op eq 'fc') {
-			my @args = @stack;
-			@stack = @{pop @saved_stacks};
-			my $function = pop @stack;
-			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
-			my ($status, @data) = $function->[1]{function}->($self, @args);
-			return $status, @data if $status ne 'return';
-			push @stack, @data;
-		} elsif ($op eq 'fj') {
-			$i += $arg if (pop @stack)->[1] == 0;
-		} elsif ($op eq 'tj') {
-			$i += $arg if (pop @stack)->[1] == 1;
-		} elsif ($op eq 'aj') {
-			$i += $arg;
-		} elsif ($op eq 'rt') {
-			return return => @stack
 		} else {
 			die "unimplemented bytecode type $op";
 		}

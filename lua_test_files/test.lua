@@ -264,3 +264,7 @@ elseif b then
 -- else
 -- 	print('goodbye world')
 end
+
+local c,a = 5, 4
+
+print(a,b,c)

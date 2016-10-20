@@ -41,12 +41,13 @@ sub parse_bytecode_chunk {
 
 
 
-	my $block = [ $self->parse_bytecode_block($chunk) ];
-	say "dump bytecode labels:\n", $self->dump_bytecode($block); # inspect final bytecode
-	$block = [ $self->resolve_bytecode_labels($block) ];
-	say "dump bytecode:\n", $self->dump_bytecode($block); # inspect final bytecode
+	my @block = $self->parse_bytecode_block($chunk);
+	say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # inspect final bytecode
+	my @bytecode = $self->resolve_bytecode_labels(@block);
+	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
+	say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # inspect final bytecode
 
-	return $block
+	return [ @bytecode ]
 }
 
 sub parse_bytecode_block {
@@ -66,8 +67,8 @@ sub parse_bytecode_block {
 			push @bytecode, $self->parse_bytecode_block($statement->{block});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
 			$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @{$statement->{names_list}};
-			$locals_loaded += @{$statement->{names_list}};
-			push @bytecode, xl => scalar @{$statement->{names_list}};
+			# $locals_loaded += @{$statement->{names_list}};
+			# push @bytecode, xl => scalar @{$statement->{names_list}};
 			if (defined $statement->{expression_list}) {
 				push @bytecode,
 					ss => undef,
@@ -146,10 +147,10 @@ sub parse_bytecode_block {
 		}
 	}
 
-	if ($locals_loaded > 0) {
-		push @bytecode, tl => $locals_loaded;
-		$self->{current_local_index} -= $locals_loaded;
-	}
+	# if ($locals_loaded > 0) {
+	# 	push @bytecode, tl => $locals_loaded;
+	# 	# $self->{current_local_index} -= $locals_loaded;
+	# }
 
 	# say Dumper $self->{current_local_scope};
 	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
@@ -157,18 +158,24 @@ sub parse_bytecode_block {
 	return @bytecode
 }
 
+# sub resolve_locals_size {
+# 	my ($self, @block) = @_;
+# 	foreach my $index (0 .. (@block / 2 - 1)) {
+# 		my $op = $block[$index * 2];
+# 		my $arg = $block[$index * 2 + 1];
+# 	}
+# }
+
 
 sub resolve_bytecode_labels {
-	my ($self, $block) = @_;
+	my ($self, @block) = @_;
 
 	my @bytecode;
 	my %labels;
 
-	foreach my $index (0 .. (@$block / 2 - 1)) {
-		my $op = $block->[$index * 2];
-		my $arg = $block->[$index * 2 + 1];
-		# my $op = shift @bytecode;
-		# my $arg = shift @bytecode;
+	while (@block) {
+		my $op = shift @block;
+		my $arg = shift @block;
 
 		if ($op eq '_label') {
 			$labels{$arg} = scalar @bytecode;

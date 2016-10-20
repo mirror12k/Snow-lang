@@ -271,7 +271,7 @@ sub parse_syntax_expression {
 	} elsif ($self->is_token_val( symbol => '{' )) {
 		$expression = $self->parse_syntax_table_expression;
 
-	} elsif ($self->is_token_type('symbol') and exists $lua_syntax_unary_operations_hash{$self->peek_token->[1]}) {
+	} elsif (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $lua_syntax_unary_operations_hash{$self->peek_token->[1]}) {
 		my $operation = $self->next_token->[1];
 		$expression = {
 			type => 'unary_expression',
@@ -319,7 +319,7 @@ sub parse_syntax_more_expression {
 	my ($self, $expression) = @_;
 
 	while (1) {
-		if ($self->is_token_type('symbol') and exists $lua_syntax_binary_operations_hash{$self->peek_token->[1]}) {
+		if (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $lua_syntax_binary_operations_hash{$self->peek_token->[1]}) {
 			# TODO: fix precedence
 			my $operation = $self->next_token->[1];
 			$expression = {

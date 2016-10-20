@@ -221,13 +221,46 @@
 -- print ('a' .. nil)
 -- print ('a' .. false)
 -- print ('a' .. true)
-print ('a' .. 5)
-print (4 .. 5)
-print ('a' .. 'asdf')
+-- print ('a' .. 5)
+-- print (4 .. 5)
+-- print ('a' .. 'asdf')
 -- print ('a' .. {})
 -- print ('a' .. function () end)
 
 
 
+-- a = 0
+-- b = not a
+
+-- print(a, b)
+
+-- while b do
+-- 	print(a, b)
+-- 	a = a + 1
+-- 	b = not a
+-- end
 
 
+
+-- while false do
+-- 	print('hello world')
+-- end
+
+-- repeat
+-- 	print('hello world')
+-- until true
+
+
+-- a, b = 5, 4, 3
+-- print(b,a, c)
+
+
+a,b = false, true
+
+if a then
+	print('hello world')
+elseif b then
+	print("what")
+-- else
+-- 	print('goodbye world')
+end

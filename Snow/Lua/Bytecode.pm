@@ -38,6 +38,8 @@ sub parse_bytecode_chunk {
 	$self->{current_local_index} = 0;
 	$self->{current_local_scope} = undef;
 
+	$self->{current_jump_index} = 0;
+
 	my $block = [ $self->parse_bytecode_block($chunk) ];
 
 	return $block
@@ -75,54 +77,70 @@ sub parse_bytecode_block {
 				push @bytecode, ds => undef;
 			}
 		} elsif ($statement->{type} eq 'assignment_statement') {
-			push @bytecode, ss => undef;
-			push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
-			push @bytecode, rs => undef;
-			foreach my $var (@{$statement->{var_list}}) {
-				push @bytecode, $self->parse_bytecode_lvalue_expression($var);
-			}
-			push @bytecode, ds => undef;
-
+			push @bytecode,
+				ss => undef,
+				$self->parse_bytecode_expression_list($statement->{expression_list}),
+				rs => undef,
+				( map $self->parse_bytecode_lvalue_expression($_), @{$statement->{var_list}} ),
+				ds => undef,
 		} elsif ($statement->{type} eq 'call_statement') {
-			push @bytecode, ss => undef;
-			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
-			push @bytecode, ds => undef;
+			push @bytecode,
+				ss => undef,
+				$self->parse_bytecode_expression($statement->{expression}),
+				ds => undef,
 		} elsif ($statement->{type} eq 'until_statement') {
 			# TODO support local variable application in the expression part (WHY lua???)
-			my @expression = $self->parse_bytecode_expression($statement->{expression});
-			my @block = $self->parse_bytecode_block($statement->{block});
-			push @bytecode, @block;
-			push @bytecode, @expression;
-			push @bytecode, bt => undef;
-			push @bytecode, fj => -4 - scalar (@expression) - scalar @block;
+			my $repeat_label = "repeat_" . $self->{current_jump_index}++;
+			push @bytecode,
+				_label => $repeat_label,
+				$self->parse_bytecode_block($statement->{block}),
+				$self->parse_bytecode_expression($statement->{expression}),
+				bt => undef,
+				fj => $repeat_label,
 		} elsif ($statement->{type} eq 'while_statement') {
-			my @expression = $self->parse_bytecode_expression($statement->{expression});
-			my @block = $self->parse_bytecode_block($statement->{block});
-			push @bytecode, @expression;
-			push @bytecode, bt => undef;
-			push @bytecode, fj => 2 + scalar @block;
-			push @bytecode, @block;
-			push @bytecode, aj => - scalar (@expression) -6 - scalar @block;
+			my $expression_label = "while_" . $self->{current_jump_index}++;
+			my $end_label = "end_" . $self->{current_jump_index}++;
+			push @bytecode,
+				_label => $expression_label,
+				$self->parse_bytecode_expression($statement->{expression}),
+				bt => undef,
+				fj => $end_label,
+				$self->parse_bytecode_block($statement->{block}),
+				aj => $expression_label,
+				_label => $end_label,
 		} elsif ($statement->{type} eq 'if_statement') {
-			my @block = $self->parse_bytecode_block($statement->{block});
-			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
-			push @bytecode, bt => undef;
+			my $branch_label = "branch_" . $self->{current_jump_index}++;
+			push @bytecode,
+				$self->parse_bytecode_expression($statement->{expression}),
+				bt => undef,
+				fj => $branch_label,
+				$self->parse_bytecode_block($statement->{block}),
+			;
 
 			if (defined $statement->{branch}) {
-				my $brach_statement = $statement->{branch};
-				my @branch_block = $self->parse_bytecode_block($brach_statement->{block});
-				push @bytecode, fj => 2 + scalar @block;
-				push @bytecode, @block;
-				push @bytecode, aj => scalar @branch_block;
-				push @bytecode, @branch_block;
-			} else {
-				push @bytecode, fj => scalar @block;
-				push @bytecode, @block;
+				my $end_label = "end_" . $self->{current_jump_index}++;
+				my $branch_statement = $statement->{branch};
+				while (defined $branch_statement) {
+					push @bytecode, aj => $end_label;
+					push @bytecode, _label => $branch_label;
+					$branch_label = "branch_" . $self->{current_jump_index}++;
+					push @bytecode, 
+						$self->parse_bytecode_expression($branch_statement->{expression}),
+						bt => undef,
+						fj => $branch_label,
+						if $branch_statement->{type} eq 'elseif_statement';
+					push @bytecode, $self->parse_bytecode_block($branch_statement->{block});
+					$branch_statement = $branch_statement->{branch};
+				}
+				push @bytecode, _label => $end_label;
 			}
+			
+			push @bytecode, _label => $branch_label;
 
 		} elsif ($statement->{type} eq 'return_statement') {
-			push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
-			push @bytecode, rt => undef;
+			push @bytecode,
+				$self->parse_bytecode_expression_list($statement->{expression_list}),
+				rt => undef,
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}
@@ -131,6 +149,34 @@ sub parse_bytecode_block {
 	if ($locals_loaded > 0) {
 		push @bytecode, tl => $locals_loaded;
 		$self->{current_local_index} -= $locals_loaded;
+	}
+
+	say "debug", $self->dump_bytecode([@bytecode]);
+
+	my %labels;
+	my @filtered_bytecode;
+	my $i = 0;
+	while (@bytecode) {
+		my $op = shift @bytecode;
+		my $arg = shift @bytecode;
+
+		if ($op eq '_label') {
+			$labels{$arg} = $i;
+		} else {
+			push @filtered_bytecode, $op => $arg;
+			$i += 2;
+		}
+	}
+	@bytecode = @filtered_bytecode;
+
+	$i = 0;
+	while ($i < @bytecode) {
+		my $op = $bytecode[$i++];
+		my $arg = $bytecode[$i++];
+
+		if ($op eq 'aj' or $op eq 'fj' or $op eq 'tj') {
+			$bytecode[$i - 1] = $labels{$arg} - $i;
+		}
 	}
 
 	# say Dumper $self->{current_local_scope};

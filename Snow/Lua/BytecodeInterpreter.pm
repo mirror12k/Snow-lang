@@ -111,7 +111,7 @@ sub execute_bytecode {
 
 		} elsif ($op eq 'un') {
 			if ($arg eq 'not') {
-				push @stack, [ bool => $self->cast_bool(pop @stack)->[1] ];
+				push @stack, [ bool => not $self->cast_bool(pop @stack)->[1] ];
 			} elsif ($arg eq '#') {
 				... # unary table length
 			} elsif ($arg eq '-') {

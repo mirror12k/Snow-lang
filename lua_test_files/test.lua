@@ -255,7 +255,7 @@
 -- print(b,a, c)
 
 
-a,b = false, true
+local a,b = false, true
 
 if a then
 	print('hello world')

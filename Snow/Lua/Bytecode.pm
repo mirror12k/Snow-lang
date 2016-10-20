@@ -27,7 +27,6 @@ sub parse {
 	$self->SUPER::parse($text);
 
 	$self->{bytecode_chunk} = $self->parse_bytecode_chunk($self->{syntax_tree});
-	say $self->dump_bytecode;
 	return $self->{bytecode_chunk}
 }
 
@@ -40,7 +39,12 @@ sub parse_bytecode_chunk {
 
 	$self->{current_jump_index} = 0;
 
+
+
 	my $block = [ $self->parse_bytecode_block($chunk) ];
+	say "dump bytecode labels:\n", $self->dump_bytecode($block); # inspect final bytecode
+	$block = [ $self->resolve_bytecode_labels($block) ];
+	say "dump bytecode:\n", $self->dump_bytecode($block); # inspect final bytecode
 
 	return $block
 }
@@ -61,20 +65,16 @@ sub parse_bytecode_block {
 		} elsif ($statement->{type} eq 'block_statement') {
 			push @bytecode, $self->parse_bytecode_block($statement->{block});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
-			foreach my $name (@{$statement->{names_list}}) {
-				$self->{current_local_scope}{$name} = $self->{current_local_index}++;
-				$locals_loaded++;
-			}
+			$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @{$statement->{names_list}};
+			$locals_loaded += @{$statement->{names_list}};
 			push @bytecode, xl => scalar @{$statement->{names_list}};
 			if (defined $statement->{expression_list}) {
-				push @bytecode, ss => undef;
-				push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
-				# push @bytecode, ts => scalar @{$statement->{names_list}};
-				push @bytecode, rs => undef;
-				foreach my $name (@{$statement->{names_list}}) {
-					push @bytecode, sl => $self->{current_local_scope}{$name};
-				}
-				push @bytecode, ds => undef;
+				push @bytecode,
+					ss => undef,
+					$self->parse_bytecode_expression_list($statement->{expression_list}),
+					rs => undef,
+					( map +( sl => $self->{current_local_scope}{$_} ), @{$statement->{names_list}} ),
+					ds => undef,
 			}
 		} elsif ($statement->{type} eq 'assignment_statement') {
 			push @bytecode,
@@ -134,7 +134,7 @@ sub parse_bytecode_block {
 				}
 				push @bytecode, _label => $end_label;
 			}
-			
+
 			push @bytecode, _label => $branch_label;
 
 		} elsif ($statement->{type} eq 'return_statement') {
@@ -151,25 +151,33 @@ sub parse_bytecode_block {
 		$self->{current_local_index} -= $locals_loaded;
 	}
 
-	say "debug", $self->dump_bytecode([@bytecode]);
+	# say Dumper $self->{current_local_scope};
+	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
 
+	return @bytecode
+}
+
+
+sub resolve_bytecode_labels {
+	my ($self, $block) = @_;
+
+	my @bytecode;
 	my %labels;
-	my @filtered_bytecode;
-	my $i = 0;
-	while (@bytecode) {
-		my $op = shift @bytecode;
-		my $arg = shift @bytecode;
+
+	foreach my $index (0 .. (@$block / 2 - 1)) {
+		my $op = $block->[$index * 2];
+		my $arg = $block->[$index * 2 + 1];
+		# my $op = shift @bytecode;
+		# my $arg = shift @bytecode;
 
 		if ($op eq '_label') {
-			$labels{$arg} = $i;
+			$labels{$arg} = scalar @bytecode;
 		} else {
-			push @filtered_bytecode, $op => $arg;
-			$i += 2;
+			push @bytecode, $op => $arg;
 		}
 	}
-	@bytecode = @filtered_bytecode;
 
-	$i = 0;
+	my $i = 0;
 	while ($i < @bytecode) {
 		my $op = $bytecode[$i++];
 		my $arg = $bytecode[$i++];
@@ -178,9 +186,6 @@ sub parse_bytecode_block {
 			$bytecode[$i - 1] = $labels{$arg} - $i;
 		}
 	}
-
-	# say Dumper $self->{current_local_scope};
-	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
 
 	return @bytecode
 }

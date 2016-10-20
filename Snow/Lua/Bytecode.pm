@@ -176,6 +176,22 @@ sub parse_bytecode_expression {
 		return $self->parse_bytecode_expression($expression->{expression})
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return $self->parse_bytecode_identifier($expression->{identifier})
+	} elsif ($expression->{type} eq 'unary_expression') {
+		return
+			ss => undef,
+			$self->parse_bytecode_expression($expression->{expression}),
+			ts => 1,
+			un => $expression->{operation},
+			ls => 1,
+	} elsif ($expression->{type} eq 'binary_expression') {
+		return
+			ss => undef,
+			$self->parse_bytecode_expression($expression->{expression_left}),
+			ts => 1,
+			$self->parse_bytecode_expression($expression->{expression_right}),
+			ts => 2,
+			bn => $expression->{operation},
+			ls => 1,
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
 			$self->parse_bytecode_expression($expression->{expression}),

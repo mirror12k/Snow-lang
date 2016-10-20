@@ -198,3 +198,15 @@ a, b = 5, 4, 3
 
 print(a,b)
 
+-- print(tonumber(nil), tonumber(false), tonumber(true), tonumber(''), tonumber('5'), tonumber({}))
+-- print(nil or 5, false or 5, true or 5, '' or 5, '5' or 5, {} or 5)
+
+-- print(5+nil)
+-- print(5+true)
+-- print(5+false)
+-- print(5+'')
+print(5+'5')
+print(5+'a')
+-- print(5+{})
+-- print(5+function () end)
+

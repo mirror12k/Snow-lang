@@ -79,14 +79,7 @@ sub execute_bytecode {
 		# say "$op";
 
 		if ($op eq 'bt') {
-			my $val = pop @stack;
-			if ($val->[0] eq 'nil') {
-				push @stack, [ bool => 0 ];
-			} elsif ($val->[0] eq 'bool') {
-				push @stack, $val;
-			} else {
-				push @stack, [ bool => 1 ];
-			}
+			push @stack, $self->cast_bool(pop @stack);
 		} elsif ($op eq 'ps') {
 			push @stack, $arg;
 		} elsif ($op eq 'ss') {
@@ -115,7 +108,71 @@ sub execute_bytecode {
 			push @locals, $lua_nil_constant foreach 1 .. $arg;
 		} elsif ($op eq 'tl') {
 			@locals = @locals[0 .. (-$arg - 1)];
-			
+
+		} elsif ($op eq 'un') {
+			if ($arg eq 'not') {
+				push @stack, [ bool => $self->cast_bool(pop @stack)->[1] ];
+			} elsif ($arg eq '#') {
+				... # unary table length
+			} elsif ($arg eq '-') {
+				... # unary numeric negation
+			} elsif ($arg eq '~') {
+				... # unary bitwise not
+			} else {
+				die "unimplemented bytecode unary operation type $arg";
+			}
+
+		} elsif ($op eq 'bn') {
+			if ($arg eq 'or') {
+				...
+			} elsif ($arg eq 'and') {
+				...
+			} elsif ($arg eq '<') {
+				...
+			} elsif ($arg eq '>') {
+				...
+			} elsif ($arg eq '<=') {
+				...
+			} elsif ($arg eq '>=') {
+				...
+			} elsif ($arg eq '~=') {
+				...
+			} elsif ($arg eq '==') {
+				...
+			} elsif ($arg eq '|') {
+				...
+			} elsif ($arg eq '~') {
+				...
+			} elsif ($arg eq '&') {
+				...
+			} elsif ($arg eq '<<') {
+				...
+			} elsif ($arg eq '>>') {
+				...
+			} elsif ($arg eq '..') {
+				...
+			} elsif ($arg eq '+') {
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				my $num1 = $self->cast_number($val1);
+				my $num2 = $self->cast_number($val2);
+				return error => "attempt to perform arithmetic on a $val1->[0] value" if $num1 == $lua_nil_constant;
+				return error => "attempt to perform arithmetic on a $val2->[0] value" if $num2 == $lua_nil_constant;
+				push @stack, [ number => $num1->[1] + $num2->[1] ];
+			} elsif ($arg eq '-') {
+				...
+			} elsif ($arg eq '*') {
+				...
+			} elsif ($arg eq '/') {
+				...
+			} elsif ($arg eq '//') {
+				...
+			} elsif ($arg eq '%') {
+				...
+			} else {
+				die "unimplemented bytecode unary operation type $arg";
+			}
+
 		} elsif ($op eq 'fc') {
 			my @args = @stack;
 			@stack = @{pop @saved_stacks};
@@ -140,6 +197,30 @@ sub execute_bytecode {
 
 
 
+
+sub cast_bool {
+	my ($self, $val) = @_;
+	if ($val == $lua_nil_constant) {
+		return [ bool => 0 ]
+	} elsif ($val->[0] eq 'bool') {
+		return $val
+	} else {
+		return [ bool => 1 ]
+	}
+}
+
+
+
+sub cast_number {
+	my ($self, $val) = @_;
+	if ($val->[0] eq 'number') {
+		return $val
+	} elsif ($val->[0] eq 'string' and $val->[1] =~ /^(\d+)$/) {
+		return [ number => $1 ]
+	} else {
+		return $lua_nil_constant
+	}
+}
 
 
 

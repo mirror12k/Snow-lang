@@ -102,16 +102,20 @@ sub execute_bytecode {
 		} elsif ($op eq 'ls') {
 			# say Dumper [ @stack[0 .. $arg] ];
 			@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
+
 		} elsif ($op eq 'lg') {
 			push @stack, $self->{global_scope}{$arg} // $lua_nil_constant;
-		} elsif ($op eq 'sl') {
-			$locals[$arg] = pop @stack // $lua_nil_constant;
+		} elsif ($op eq 'sg') {
+			$self->{global_scope}{$arg} = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'll') {
 			push @stack, $locals[$arg];
+		} elsif ($op eq 'sl') {
+			$locals[$arg] = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'xl') {
 			push @locals, $lua_nil_constant foreach 1 .. $arg;
 		} elsif ($op eq 'tl') {
 			@locals = @locals[0 .. (-$arg - 1)];
+			
 		} elsif ($op eq 'fc') {
 			my @args = @stack;
 			@stack = @{pop @saved_stacks};
@@ -122,6 +126,8 @@ sub execute_bytecode {
 			push @stack, @data;
 		} elsif ($op eq 'fj') {
 			$i += $arg if (pop @stack)->[1] == 0;
+		} elsif ($op eq 'tj') {
+			$i += $arg if (pop @stack)->[1] == 1;
 		} elsif ($op eq 'aj') {
 			$i += $arg;
 		} elsif ($op eq 'rt') {

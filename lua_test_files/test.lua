@@ -173,16 +173,28 @@
 -- end
 
 
-if true then
-	print("branch 1")
-else
-	print('branch 2')
-end
+-- if true then
+-- 	print("branch 1")
+-- else
+-- 	print('branch 2')
+-- end
 
-if nil then
-	print("branch 3")
-else
-	print('branch 4')
-end
+-- if nil then
+-- 	print("branch 3")
+-- else
+-- 	print('branch 4')
+-- end
 
+-- local a = 5
+
+-- repeat
+-- 	print('hello world')
+-- until false
+
+
+local b,c
+
+a, b = 5, 4, 3
+
+print(a,b)
 

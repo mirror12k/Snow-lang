@@ -74,10 +74,27 @@ sub parse_bytecode_block {
 				}
 				push @bytecode, ds => undef;
 			}
+		} elsif ($statement->{type} eq 'assignment_statement') {
+			push @bytecode, ss => undef;
+			push @bytecode, $self->parse_bytecode_expression_list($statement->{expression_list});
+			push @bytecode, rs => undef;
+			foreach my $var (@{$statement->{var_list}}) {
+				push @bytecode, $self->parse_bytecode_lvalue_expression($var);
+			}
+			push @bytecode, ds => undef;
+
 		} elsif ($statement->{type} eq 'call_statement') {
 			push @bytecode, ss => undef;
 			push @bytecode, $self->parse_bytecode_expression($statement->{expression});
 			push @bytecode, ds => undef;
+		} elsif ($statement->{type} eq 'until_statement') {
+			# TODO support local variable application in the expression part (WHY lua???)
+			my @expression = $self->parse_bytecode_expression($statement->{expression});
+			my @block = $self->parse_bytecode_block($statement->{block});
+			push @bytecode, @block;
+			push @bytecode, @expression;
+			push @bytecode, bt => undef;
+			push @bytecode, fj => -4 - scalar (@expression) - scalar @block;
 		} elsif ($statement->{type} eq 'while_statement') {
 			my @expression = $self->parse_bytecode_expression($statement->{expression});
 			my @block = $self->parse_bytecode_block($statement->{block});
@@ -170,6 +187,22 @@ sub parse_bytecode_expression {
 	}
 }
 
+sub parse_bytecode_lvalue_expression {
+	my ($self, $expression) = @_;
+
+	if ($expression->{type} eq 'identifier_expression') {
+		return $self->parse_bytecode_lvalue_identifier($expression->{identifier})
+	} elsif ($expression->{type} eq 'access_expression') {
+		return
+			$self->parse_bytecode_expression($expression->{expression}),
+			so => $expression->{identifier}
+	} elsif ($expression->{type} eq 'expressive_access_expression') {
+		... #TODO
+	} else {
+		die "unimplemented expression type $expression->{type}";
+	}
+}
+
 
 sub parse_bytecode_identifier {
 	my ($self, $identifier) = @_;
@@ -183,6 +216,21 @@ sub parse_bytecode_identifier {
 	# TODO implement closure load
 
 	return lg => $identifier
+}
+
+
+sub parse_bytecode_lvalue_identifier {
+	my ($self, $identifier) = @_;
+
+	return sl => $self->{current_local_scope}{$identifier} if defined $self->{current_local_scope} and exists $self->{current_local_scope}{$identifier};
+
+	foreach my $i (reverse 0 .. $#{$self->{local_scope_stack}}) {
+		return sl => $self->{local_scope_stack}[$i]{$identifier} if exists $self->{local_scope_stack}[$i]{$identifier};
+	}
+
+	# TODO implement closure load
+
+	return sg => $identifier
 }
 
 sub dump_bytecode {

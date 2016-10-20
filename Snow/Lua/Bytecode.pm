@@ -37,6 +37,9 @@ sub parse_bytecode_chunk {
 	$self->{current_local_index} = 0;
 	$self->{current_local_scope} = undef;
 
+	$self->{local_label_stack} = [];
+	$self->{current_local_labels} = undef;
+
 	$self->{current_jump_index} = 0;
 
 
@@ -55,14 +58,27 @@ sub parse_bytecode_block {
 
 	push @{$self->{local_scope_stack}}, $self->{current_local_scope} if defined $self->{current_local_scope};
 	$self->{current_local_scope} = {};
+	push @{$self->{local_label_stack}}, $self->{current_local_labels} if defined $self->{current_local_labels};
+	$self->{current_local_labels} = {};
 
 	my $locals_loaded = 0;
 	# need to precompute how many locals are loaded in order to properly support goto
+
+	# run through once to collect all local labels
+	foreach my $statement (@$block) {
+		if ($statement->{type} eq 'label_statement') {
+			$self->{current_local_labels}{$statement->{identifier}} = "user_label_" . $self->{current_jump_index}++;
+		}
+	}
 
 	my @bytecode;
 	foreach my $statement (@$block) {
 		if ($statement->{type} eq 'empty_statement') {
 			# nothing
+		} elsif ($statement->{type} eq 'label_statement') {
+			push @bytecode, _label => $self->{current_local_labels}{$statement->{identifier}};
+		} elsif ($statement->{type} eq 'goto_statement') {
+			push @bytecode, aj => $self->parse_bytecode_user_label($statement->{identifier});
 		} elsif ($statement->{type} eq 'block_statement') {
 			push @bytecode, $self->parse_bytecode_block($statement->{block});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
@@ -154,6 +170,7 @@ sub parse_bytecode_block {
 
 	# say Dumper $self->{current_local_scope};
 	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
+	$self->{current_local_labels} = shift @{$self->{local_label_stack}} if @{$self->{local_label_stack}};
 
 	return @bytecode
 }
@@ -190,6 +207,7 @@ sub resolve_bytecode_labels {
 		my $arg = $bytecode[$i++];
 
 		if ($op eq 'aj' or $op eq 'fj' or $op eq 'tj') {
+			die "missing label '$arg' while resolving" unless exists $labels{$arg};
 			$bytecode[$i - 1] = $labels{$arg} - $i;
 		}
 	}
@@ -305,6 +323,18 @@ sub parse_bytecode_lvalue_identifier {
 	# TODO implement closure load
 
 	return sg => $identifier
+}
+
+sub parse_bytecode_user_label {
+	my ($self, $label) = @_;
+
+	return $self->{current_local_labels}{$label} if defined $self->{current_local_labels} and exists $self->{current_local_labels}{$label};
+
+	foreach my $i (reverse 0 .. $#{$self->{local_label_stack}}) {
+		return $self->{local_label_stack}[$i]{$label} if exists $self->{local_label_stack}[$i]{$label};
+	}
+
+	die "missing user label $label";
 }
 
 sub dump_bytecode {

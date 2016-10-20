@@ -106,7 +106,6 @@ sub execute_bytecode {
 			$locals[$arg] = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'xl') {
 			@locals = ($lua_nil_constant) x $arg;
-			# push @locals, $lua_nil_constant foreach 1 .. $arg;
 		# } elsif ($op eq 'tl') {
 		# 	@locals = @locals[0 .. (-$arg - 1)];
 

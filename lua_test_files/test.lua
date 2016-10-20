@@ -255,16 +255,31 @@
 -- print(b,a, c)
 
 
-local a,b = false, true
+-- local a,b = false, true
 
-if a then
-	print('hello world')
-elseif b then
-	print("what")
--- else
--- 	print('goodbye world')
-end
+-- if a then
+-- 	print('hello world')
+-- elseif b then
+-- 	print("what")
+-- -- else
+-- -- 	print('goodbye world')
+-- end
 
-local c,a = 5, 4
+-- local c,a,d = 5, 4
 
-print(a,b,c)
+-- print(a,b,c,d)
+
+
+goto lol
+::start::
+
+print('hello world')
+
+goto ende
+::lol::
+
+print('goodbye world')
+goto start
+
+
+::ende::

@@ -69,20 +69,20 @@ sub execute {
 
 
 sub execute_bytecode {
-	my ($self, $bytecode_chunk) = @_;
+	my ($self, $bytecode_chunk, @args) = @_;
 
 	my $i = 0;
 
 	my @saved_stacks;
-	my @stack;
+	my @stack = @args;
 	my @locals;
 
 	while ($i < @$bytecode_chunk) {
 		my $op = $bytecode_chunk->[$i++];
 		my $arg = $bytecode_chunk->[$i++];
 
-		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks;
-		# say "\t", $self->dump_stack( \@stack );
+		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack;
+		# # say "\t", $self->dump_stack( \@stack );
 		# say "$op => ", $arg // '';
 
 		if ($op eq 'ps') {
@@ -115,7 +115,6 @@ sub execute_bytecode {
 			$locals[$arg] = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'yl') {
 			@locals[$arg .. $arg + $#stack] = @stack;
-			@stack = @{pop @saved_stacks};
 		} elsif ($op eq 'xl') {
 			@locals = ($lua_nil_constant) x $arg;
 		# } elsif ($op eq 'tl') {
@@ -124,7 +123,12 @@ sub execute_bytecode {
 		} elsif ($op eq 'fc') {
 			my $function = shift @stack;
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
-			my ($status, @data) = $function->[1]{function}->($self, @stack);
+			my ($status, @data);
+			if ($function->[1]{is_native}) {
+				($status, @data) = $function->[1]{function}->($self, @stack);
+			} else {
+				($status, @data) = $self->execute_bytecode($function->[1]{chunk}, @stack);
+			}
 			return $status, @data if $status ne 'return';
 			@stack = @data;
 			# @stack = (@{pop @saved_stacks}, @data);
@@ -354,9 +358,9 @@ sub to_string {
 	} elsif ($val->[0] eq 'number' or $val->[0] eq 'string') {
 		return [ string => "$val->[1]" ];
 	} elsif ($val->[0] eq 'table') {
-		return [ string => "TABLE $val->[1]" ];
+		return [ string => "$val->[1]" =~ s/^HASH\((.*)\)$/table: $1/r ];
 	} elsif ($val->[0] eq 'function') {
-		return [ string => "FUNCTION $val->[1]" ];
+		return [ string => "$val->[1]" =~ s/^HASH\((.*)\)$/function: $1/r ];
 	} else {
 		die "what $val->[0]";
 	}

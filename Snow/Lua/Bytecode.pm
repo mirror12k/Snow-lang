@@ -26,12 +26,18 @@ sub parse {
 	my ($self, $text) = @_;
 	$self->SUPER::parse($text);
 
+	$self->{bytecode_chunk_queue} = [];
 	$self->{bytecode_chunk} = $self->parse_bytecode_chunk($self->{syntax_tree});
+
+	while (@{$self->{bytecode_chunk_queue}}) {
+		my $chunk_record = shift @{$self->{bytecode_chunk_queue}};
+		$chunk_record->{chunk} = $self->parse_bytecode_chunk($chunk_record->{chunk}, $chunk_record->{args_list});
+	}
 	return $self->{bytecode_chunk}
 }
 
 sub parse_bytecode_chunk {
-	my ($self, $chunk) = @_;
+	my ($self, $chunk, $args_list) = @_;
 
 	$self->{local_scope_stack} = [];
 	$self->{current_local_index} = 0;
@@ -45,10 +51,15 @@ sub parse_bytecode_chunk {
 	$self->{current_jump_index} = 0;
 
 
+	if (defined $args_list) {
+		$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @$args_list;
+	}
 
 	my @block = $self->parse_bytecode_block($chunk);
 	say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # inspect final bytecode
 	my @bytecode = $self->resolve_bytecode_labels(@block);
+	unshift @bytecode, ts => 0 if defined $args_list;
+	unshift @bytecode, yl => 0 if defined $args_list and @$args_list > 0;
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
 	say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # inspect final bytecode
 
@@ -95,6 +106,7 @@ sub parse_bytecode_block {
 					ss => undef,
 					$self->parse_bytecode_expression_list($statement->{expression_list}),
 					yl => $self->{current_local_scope}{$statement->{names_list}[0]},
+					ds => undef,
 			}
 		} elsif ($statement->{type} eq 'assignment_statement') {
 			push @bytecode,
@@ -184,6 +196,7 @@ sub parse_bytecode_block {
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
 				fc => undef,
 				yl => $self->{current_local_scope}{$statement->{names_list}[0]},
+				ds => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
 				bt => undef,
 				fj => $end_label,
@@ -374,6 +387,12 @@ sub parse_bytecode_expression {
 			ms => undef,
 		;
 		return @code;
+	} elsif ($expression->{type} eq 'function_expression') {
+		my $function_val = { chunk => $expression->{block}, args_list => $expression->{args_list} };
+		push @{$self->{bytecode_chunk_queue}}, $function_val;
+		return
+			ps => [ function => $function_val ],
+
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
 			ss => undef,

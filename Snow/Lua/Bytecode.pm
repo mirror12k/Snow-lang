@@ -50,15 +50,20 @@ sub parse_bytecode_chunk {
 
 	$self->{current_jump_index} = 0;
 
+	$self->{is_vararg_chunk} = (defined $args_list and @$args_list > 0 and $args_list->[-1] eq '...');
+
+	$args_list = [ grep $_ !~ /^\.\.\.$/, @$args_list ] if $self->{is_vararg_chunk};
+
 
 	if (defined $args_list) {
 		$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @$args_list;
 	}
 
 	my @block = $self->parse_bytecode_block($chunk);
-	say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # inspect final bytecode
+	# say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # inspect final bytecode
 	my @bytecode = $self->resolve_bytecode_labels(@block);
 	unshift @bytecode, ts => 0 if defined $args_list;
+	unshift @bytecode, sv => scalar @$args_list if $self->{is_vararg_chunk};
 	unshift @bytecode, yl => 0 if defined $args_list and @$args_list > 0;
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
 	say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # inspect final bytecode
@@ -99,8 +104,6 @@ sub parse_bytecode_block {
 			push @bytecode, $self->parse_bytecode_block($statement->{block});
 		} elsif ($statement->{type} eq 'variable_declaration_statement') {
 			$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @{$statement->{names_list}};
-			# $locals_loaded += @{$statement->{names_list}};
-			# push @bytecode, xl => scalar @{$statement->{names_list}};
 			if (defined $statement->{expression_list}) {
 				push @bytecode,
 					ss => undef,
@@ -238,7 +241,7 @@ sub parse_bytecode_block {
 		} elsif ($statement->{type} eq 'return_statement') {
 			push @bytecode,
 				$self->parse_bytecode_expression_list($statement->{expression_list}),
-				lv => undef,
+				lf => undef,
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}
@@ -332,6 +335,9 @@ sub parse_bytecode_expression {
 		return ps => [ string => $expression->{value} ]
 	} elsif ($expression->{type} eq 'parenthesis_expression') {
 		return $self->parse_bytecode_expression($expression->{expression})
+	} elsif ($expression->{type} eq 'vararg_expression') {
+		die "vararg expression used in non-vararg function" unless $self->{is_vararg_chunk};
+		return lv => undef
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return $self->parse_bytecode_identifier($expression->{identifier})
 	} elsif ($expression->{type} eq 'access_expression') {

@@ -75,6 +75,7 @@ sub execute_bytecode {
 
 	my @saved_stacks;
 	my @stack = @args;
+	my @vararg;
 	my @locals;
 
 	while ($i < @$bytecode_chunk) {
@@ -97,7 +98,7 @@ sub execute_bytecode {
 		} elsif ($op eq 'rs') {
 			@stack = reverse @stack;
 		} elsif ($op eq 'ts') {
-			@stack = @stack[0 .. ($arg - 1)];
+			@stack = map $_ // $lua_nil_constant, @stack[0 .. ($arg - 1)];
 		} elsif ($op eq 'ds') {
 			@stack = @{pop @saved_stacks};
 		# } elsif ($op eq 'ls') {
@@ -109,6 +110,7 @@ sub execute_bytecode {
 			push @stack, $self->{global_scope}{$arg} // $lua_nil_constant;
 		} elsif ($op eq 'sg') {
 			$self->{global_scope}{$arg} = pop @stack // $lua_nil_constant;
+
 		} elsif ($op eq 'll') {
 			push @stack, $locals[$arg];
 		} elsif ($op eq 'sl') {
@@ -120,6 +122,11 @@ sub execute_bytecode {
 		# } elsif ($op eq 'tl') {
 		# 	@locals = @locals[0 .. (-$arg - 1)];
 
+		} elsif ($op eq 'sv') {
+			@vararg = @stack[$arg .. $#stack];
+		} elsif ($op eq 'lv') {
+			push @stack, @vararg;
+
 		} elsif ($op eq 'fc') {
 			my $function = shift @stack;
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
@@ -129,6 +136,7 @@ sub execute_bytecode {
 			} else {
 				($status, @data) = $self->execute_bytecode($function->[1]{chunk}, @stack);
 			}
+			# say "functon returned $status => @data";
 			return $status, @data if $status ne 'return';
 			@stack = @data;
 			# @stack = (@{pop @saved_stacks}, @data);
@@ -139,7 +147,7 @@ sub execute_bytecode {
 			$i += $arg if (pop @stack)->[1] == 1;
 		} elsif ($op eq 'aj') {
 			$i += $arg;
-		} elsif ($op eq 'lv') {
+		} elsif ($op eq 'lf') {
 			return return => @stack
 
 		} elsif ($op eq 'fr') {
@@ -313,6 +321,8 @@ sub execute_bytecode {
 			die "unimplemented bytecode type $op";
 		}
 	}
+
+	return return =>
 }
 
 

@@ -261,13 +261,14 @@ if a then
 	print('hello world')
 elseif b then
 	print("what")
--- else
--- 	print('goodbye world')
+else
+	print('goodbye world')
 end
 
 local c,a,d = 5, 4
 
 print(a,b,c,d)
+print(a+5, c - 4)
 
 
 -- goto lol
@@ -311,8 +312,8 @@ print(a,b,c,d)
 -- end
 
 
--- for i = 1, 5 do print(i) end
--- for i = 5, 1, -1 do print(i) end
--- for i = 10, 35, 10 do print(i) end
--- for i = 35, 10, -10 do print(i) end
+for i = 1, 5 do print(i) end
+for i = 5, 1, -1 do print(i) end
+for i = 10, 35, 10 do print(i) end
+for i = 35, 10, -10 do print(i) end
 

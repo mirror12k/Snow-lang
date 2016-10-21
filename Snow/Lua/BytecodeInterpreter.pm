@@ -41,7 +41,9 @@ sub load_libraries {
 
 	$self->{global_scope}{print} = [ function => { is_native => 1, function => sub {
 		my ($self, @args) = @_;
-		say "print: ", join "\t", map "$_->[1]", @args;
+		say 
+			# "print: ", 
+			join "\t", map to_string($_)->[1], @args;
 		return return =>
 	} } ];
 }
@@ -93,8 +95,8 @@ sub execute_bytecode {
 			@stack = @stack[0 .. ($arg - 1)];
 		} elsif ($op eq 'ds') {
 			@stack = @{pop @saved_stacks};
-		} elsif ($op eq 'ls') {
-			@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
+		# } elsif ($op eq 'ls') {
+		# 	@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
 		} elsif ($op eq 'ms') {
 			@stack = (@{pop @saved_stacks}, @stack);
 
@@ -106,6 +108,9 @@ sub execute_bytecode {
 			push @stack, $locals[$arg];
 		} elsif ($op eq 'sl') {
 			$locals[$arg] = pop @stack // $lua_nil_constant;
+		} elsif ($op eq 'yl') {
+			@locals[$arg .. $arg + $#stack] = @stack;
+			@stack = @{pop @saved_stacks};
 		} elsif ($op eq 'xl') {
 			@locals = ($lua_nil_constant) x $arg;
 		# } elsif ($op eq 'tl') {
@@ -125,7 +130,7 @@ sub execute_bytecode {
 			$i += $arg if (pop @stack)->[1] == 1;
 		} elsif ($op eq 'aj') {
 			$i += $arg;
-		} elsif ($op eq 'rt') {
+		} elsif ($op eq 'lv') {
 			return return => @stack
 
 		} elsif ($op eq 'fr') {
@@ -302,6 +307,24 @@ sub cast_number {
 sub dump_stack {
 	my ($self, $stack) = @_;
 	return join '', map "[$_->[0]:$_->[1]]", @$stack;
+}
+
+
+sub to_string {
+	my ($val) = @_;
+	if ($val == $lua_nil_constant) {
+		return [ string => 'nil' ];
+	} elsif ($val->[0] eq 'bool') {
+		return [ string => $val->[1] ? 'true' : 'false' ];
+	} elsif ($val->[0] eq 'number' or $val->[0] eq 'string') {
+		return [ string => "$val->[1]" ];
+	} elsif ($val->[0] eq 'table') {
+		return [ string => "TABLE $val->[1]" ];
+	} elsif ($val->[0] eq 'function') {
+		return [ string => "FUNCTION $val->[1]" ];
+	} else {
+		die "what $val->[0]";
+	}
 }
 
 

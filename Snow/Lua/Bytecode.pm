@@ -94,9 +94,7 @@ sub parse_bytecode_block {
 				push @bytecode,
 					ss => undef,
 					$self->parse_bytecode_expression_list($statement->{expression_list}),
-					rs => undef,
-					( map +( sl => $self->{current_local_scope}{$_} ), @{$statement->{names_list}} ),
-					ds => undef,
+					yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 			}
 		} elsif ($statement->{type} eq 'assignment_statement') {
 			push @bytecode,
@@ -185,9 +183,7 @@ sub parse_bytecode_block {
 				cs => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
 				fc => undef,
-				rs => undef,
-				( map +( sl => $self->{current_local_scope}{$_} ), @{$statement->{names_list}} ),
-				ds => undef,
+				yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
 				bt => undef,
 				fj => $end_label,
@@ -229,7 +225,7 @@ sub parse_bytecode_block {
 		} elsif ($statement->{type} eq 'return_statement') {
 			push @bytecode,
 				$self->parse_bytecode_expression_list($statement->{expression_list}),
-				rt => undef,
+				lv => undef,
 		} else {
 			die "unimplemented statement type $statement->{type}";
 		}
@@ -301,7 +297,8 @@ sub parse_bytecode_expression_list {
 			push @bytecode, $self->parse_bytecode_expression($expression_list->[$i]);
 			push @bytecode, ts => $i + 1;
 		}
-		push @bytecode, ls => @$expression_list - 1;
+		# push @bytecode, ls => @$expression_list - 1;
+		push @bytecode, ms => undef;
 	}
 	push @bytecode, $self->parse_bytecode_expression($expression_list->[-1]);
 
@@ -330,7 +327,7 @@ sub parse_bytecode_expression {
 			$self->parse_bytecode_expression($expression->{expression}),
 			ts => 1,
 			un => $expression->{operation},
-			ls => 1,
+			ms => undef,
 	} elsif ($expression->{type} eq 'binary_expression') {
 		return
 			ss => undef,
@@ -339,7 +336,7 @@ sub parse_bytecode_expression {
 			$self->parse_bytecode_expression($expression->{expression_right}),
 			ts => 2,
 			bn => $expression->{operation},
-			ls => 1,
+			ms => undef,
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
 			ss => undef,
@@ -347,7 +344,7 @@ sub parse_bytecode_expression {
 			ts => 1,
 			$self->parse_bytecode_expression_list($expression->{args_list}),
 			fc => undef,
-			ms => undef
+			ms => undef,
 	} else {
 		die "unimplemented expression type $expression->{type}";
 	}

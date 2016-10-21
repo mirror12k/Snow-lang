@@ -251,23 +251,23 @@
 -- until true
 
 
--- a, b = 5, 4, 3
--- print(b,a, c)
+a, b = 5, 4, 3
+print(b,a, c)
 
 
--- local a,b = false, true
+local a,b = false, true
 
--- if a then
--- 	print('hello world')
--- elseif b then
--- 	print("what")
--- -- else
--- -- 	print('goodbye world')
--- end
+if a then
+	print('hello world')
+elseif b then
+	print("what")
+-- else
+-- 	print('goodbye world')
+end
 
--- local c,a,d = 5, 4
+local c,a,d = 5, 4
 
--- print(a,b,c,d)
+print(a,b,c,d)
 
 
 -- goto lol
@@ -311,8 +311,8 @@
 -- end
 
 
-for i = 1, 5 do print(i) end
-for i = 5, 1, -1 do print(i) end
-for i = 10, 35, 10 do print(i) end
-for i = 35, 10, -10 do print(i) end
+-- for i = 1, 5 do print(i) end
+-- for i = 5, 1, -1 do print(i) end
+-- for i = 10, 35, 10 do print(i) end
+-- for i = 35, 10, -10 do print(i) end
 

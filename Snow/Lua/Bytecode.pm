@@ -156,17 +156,45 @@ sub parse_bytecode_block {
 				$self->parse_bytecode_expression($statement->{expression_end}),
 				ts => 1,
 				$self->parse_bytecode_expression($statement->{expression_step}),
-				ls => 2,
+				ts => 2,
 				_label => $expression_label,
 				fr => $iter_var,
 				fj => $end_label,
 				$self->parse_bytecode_block($statement->{block}),
-				ms => undef,
+				bs => undef,
 				ll => $iter_var,
 				bn => '+',
 				sl => $iter_var,
 				aj => $expression_label,
 				_label => $end_label,
+				ds => undef,
+			;
+			$self->{current_break_label} = $last_break_label;
+		} elsif ($statement->{type} eq 'iter_statement') {
+			$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @{$statement->{names_list}};
+			my $expression_label = "iter_" . $self->{current_jump_index}++;
+			my $end_label = "iter_end_" . $self->{current_jump_index}++;
+			my $last_break_label = $self->{current_break_label};
+			$self->{current_break_label} = $end_label;
+			push @bytecode,
+				ss => undef,
+				$self->parse_bytecode_expression_list($statement->{expression_list}),
+				ts => 3,
+				sl => $self->{current_local_scope}{$statement->{names_list}[0]},
+				_label => $expression_label,
+				cs => undef,
+				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
+				fc => undef,
+				rs => undef,
+				( map +( sl => $self->{current_local_scope}{$_} ), @{$statement->{names_list}} ),
+				ds => undef,
+				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
+				bt => undef,
+				fj => $end_label,
+				$self->parse_bytecode_block($statement->{block}),
+				aj => $expression_label,
+				_label => $end_label,
+				ds => undef,
 			;
 			$self->{current_break_label} = $last_break_label;
 		} elsif ($statement->{type} eq 'if_statement') {
@@ -314,10 +342,12 @@ sub parse_bytecode_expression {
 			ls => 1,
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
-			$self->parse_bytecode_expression($expression->{expression}),
 			ss => undef,
+			$self->parse_bytecode_expression($expression->{expression}),
+			ts => 1,
 			$self->parse_bytecode_expression_list($expression->{args_list}),
-			fc => undef
+			fc => undef,
+			ms => undef
 	} else {
 		die "unimplemented expression type $expression->{type}";
 	}

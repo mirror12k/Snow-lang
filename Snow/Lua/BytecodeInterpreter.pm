@@ -42,7 +42,7 @@ sub load_libraries {
 	$self->{global_scope}{print} = [ function => { is_native => 1, function => sub {
 		my ($self, @args) = @_;
 		say "print: ", join "\t", map "$_->[1]", @args;
-		return return => $lua_nil_constant
+		return return =>
 	} } ];
 }
 
@@ -74,17 +74,19 @@ sub execute_bytecode {
 		my $op = $bytecode_chunk->[$i++];
 		my $arg = $bytecode_chunk->[$i++];
 
-		# say Dumper \@saved_stacks;
-		# say Dumper \@stack;
-		# say "$op";
+		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks;
+		# say "\t", $self->dump_stack( \@stack );
+		# say "$op => ", $arg // '';
 
 		if ($op eq 'ps') {
 			push @stack, $arg;
-		} elsif ($op eq 'ms') {
+		} elsif ($op eq 'bs') {
 			push @stack, $stack[-1];
 		} elsif ($op eq 'ss') {
 			push @saved_stacks, [ @stack ];
 			@stack = ();
+		} elsif ($op eq 'cs') {
+			push @saved_stacks, [ @stack ];
 		} elsif ($op eq 'rs') {
 			@stack = reverse @stack;
 		} elsif ($op eq 'ts') {
@@ -93,6 +95,8 @@ sub execute_bytecode {
 			@stack = @{pop @saved_stacks};
 		} elsif ($op eq 'ls') {
 			@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
+		} elsif ($op eq 'ms') {
+			@stack = (@{pop @saved_stacks}, @stack);
 
 		} elsif ($op eq 'lg') {
 			push @stack, $self->{global_scope}{$arg} // $lua_nil_constant;
@@ -108,13 +112,13 @@ sub execute_bytecode {
 		# 	@locals = @locals[0 .. (-$arg - 1)];
 
 		} elsif ($op eq 'fc') {
-			my @args = @stack;
-			@stack = @{pop @saved_stacks};
-			my $function = pop @stack;
+			my $function = shift @stack;
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
-			my ($status, @data) = $function->[1]{function}->($self, @args);
+			my ($status, @data) = $function->[1]{function}->($self, @stack);
 			return $status, @data if $status ne 'return';
-			push @stack, @data;
+			@stack = @data;
+			# @stack = (@{pop @saved_stacks}, @data);
+			# push @stack, @data;
 		} elsif ($op eq 'fj') {
 			$i += $arg if (pop @stack)->[1] == 0;
 		} elsif ($op eq 'tj') {
@@ -294,6 +298,11 @@ sub cast_number {
 	}
 }
 
+
+sub dump_stack {
+	my ($self, $stack) = @_;
+	return join '', map "[$_->[0]:$_->[1]]", @$stack;
+}
 
 
 1;

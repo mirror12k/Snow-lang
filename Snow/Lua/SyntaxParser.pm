@@ -414,8 +414,8 @@ sub parse_syntax_table_expression {
 			my $identifier = $self->next_token->[1];
 			$self->assert_step_token_val( symbol => '=' );
 			push @table_fields, {
-				type => 'expressive_field',
-				key_expression => { type => 'string_constant', value => $identifier },
+				type => 'identifier_field',
+				identifier => $identifier,
 				expression => $self->parse_syntax_expression,
 			};
 		} else {

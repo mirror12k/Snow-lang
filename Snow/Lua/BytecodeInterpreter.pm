@@ -46,6 +46,11 @@ sub load_libraries {
 			join "\t", map to_string($_)->[1], @args;
 		return return =>
 	} } ];
+	$self->{global_scope}{dump} = [ function => { is_native => 1, function => sub {
+		my ($self, @args) = @_;
+		say Dumper \@args;
+		return return =>
+	} } ];
 }
 
 
@@ -158,6 +163,21 @@ sub execute_bytecode {
 			} else {
 				die "unimplemented bytecode unary operation type $arg";
 			}
+
+		} elsif ($op eq 'co') {
+			push @stack, [ table => { _metatable => undef, _index => 1, } ];
+		} elsif ($op eq 'io') {
+			my $val = pop @stack;
+			$stack[0][1]{"string_$arg"} = $val;
+		} elsif ($op eq 'eo') {
+			my $val = pop @stack;
+			my $key = pop @stack;
+			return error => "table key is nil" if $val == $lua_nil_constant;
+			$stack[0][1]{"$key->[0]_$key->[1]"} = $val;
+		} elsif ($op eq 'ao') {
+			my $val = pop @stack;
+			$stack[0][1]{"number_" . $stack[0][1]{_index}++} = $val;
+
 
 		} elsif ($op eq 'bn') {
 			if ($arg eq 'or') {

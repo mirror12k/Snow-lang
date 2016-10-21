@@ -321,6 +321,8 @@ sub parse_bytecode_expression {
 		return $self->parse_bytecode_expression($expression->{expression})
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return $self->parse_bytecode_identifier($expression->{identifier})
+	} elsif ($expression->{type} eq 'access_expression') {
+		return lo => $expression->{identifier}
 	} elsif ($expression->{type} eq 'unary_expression') {
 		return
 			ss => undef,
@@ -337,6 +339,40 @@ sub parse_bytecode_expression {
 			ts => 2,
 			bn => $expression->{operation},
 			ms => undef,
+	} elsif ($expression->{type} eq 'table_expression') {
+		my @code = (
+			ss => undef,
+			co => undef,
+		);
+		foreach my $field (@{$expression->{table_fields}}) {
+			if ($field->{type} eq 'expressive_field') {
+				push @code,
+					$self->parse_bytecode_expression($field->{key_expression}),
+					ts => 2,
+					$self->parse_bytecode_expression($field->{expression}),
+					ts => 3,
+					eo => undef,
+				;
+			} elsif ($field->{type} eq 'identifier_field') {
+				push @code,
+					$self->parse_bytecode_expression($field->{expression}),
+					ts => 2,
+					io => $field->{identifier},
+				;
+			} elsif ($field->{type} eq 'array_field') {
+				push @code,
+					$self->parse_bytecode_expression($field->{expression}),
+					ts => 2,
+					ao => undef,
+				;
+			} else {
+				die "unimplemented field type $field->{type}";
+			}
+		}
+		push @code,
+			ms => undef,
+		;
+		return @code;
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
 			ss => undef,
@@ -358,7 +394,7 @@ sub parse_bytecode_lvalue_expression {
 	} elsif ($expression->{type} eq 'access_expression') {
 		return
 			$self->parse_bytecode_expression($expression->{expression}),
-			so => $expression->{identifier}
+			so => $expression->{identifier},
 	} elsif ($expression->{type} eq 'expressive_access_expression') {
 		... #TODO
 	} else {

@@ -251,24 +251,24 @@
 -- until true
 
 
-a, b = 5, 4, 3
-print(b,a, c)
+-- a, b = 5, 4, 3
+-- print(b,a, c)
 
 
-local a,b = false, true
+-- local a,b = false, true
 
-if a then
-	print('hello world')
-elseif b then
-	print("what")
-else
-	print('goodbye world')
-end
+-- if a then
+-- 	print('hello world')
+-- elseif b then
+-- 	print("what")
+-- else
+-- 	print('goodbye world')
+-- end
 
-local c,a,d = 5, 4
+-- local c,a,d = 5, 4
 
-print(a,b,c,d)
-print(a+5, c - 4)
+-- print(a,b,c,d)
+-- print(a+5, c - 4)
 
 
 -- goto lol
@@ -312,8 +312,26 @@ print(a+5, c - 4)
 -- end
 
 
-for i = 1, 5 do print(i) end
-for i = 5, 1, -1 do print(i) end
-for i = 10, 35, 10 do print(i) end
-for i = 35, 10, -10 do print(i) end
+-- for i = 1, 5 do print(i) end
+-- for i = 5, 1, -1 do print(i) end
+-- for i = 10, 35, 10 do print(i) end
+-- for i = 35, 10, -10 do print(i) end
+
+
+-- for k, v in pairs({5, 4, a = 3, 2}) do
+-- 	print(k, v)
+-- end
+
+-- o = {'asdf', [-1] = 'fdsa', ['1'] = 'qwer', [false] = 'zxvc', [{}] = 'zxvc', [function () end] = 'foobar'}
+
+-- for k, v in pairs(o) do
+-- 	print(type(k), k, v)
+-- end
+
+
+local t = {5,4,3, a='asdf', b='beta', [5+4] = 'arith', [false] = true}
+
+print(t)
+
+dump(t)
 

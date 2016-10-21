@@ -177,6 +177,21 @@ sub execute_bytecode {
 		} elsif ($op eq 'ao') {
 			my $val = pop @stack;
 			$stack[0][1]{"number_" . $stack[0][1]{_index}++} = $val;
+		} elsif ($op eq 'lo') {
+			my $obj = pop @stack;
+			return error => "attempt to access non-object type $obj->[0]" unless $obj->[0] eq 'table';
+			push @stack, $obj->[1]{"string_$arg"} // $lua_nil_constant;
+		} elsif ($op eq 'so') {
+			my $obj = pop @stack;
+			my $val = pop @stack;
+			return error => "attempt to store in non-object type $obj->[0]" unless $obj->[0] eq 'table';
+			$obj->[1]{"string_$arg"} = $val;
+		} elsif ($op eq 'vo') {
+			my $key = pop @stack;
+			my $obj = pop @stack;
+			my $val = pop @stack;
+			return error => "attempt to store in non-object type $obj->[0]" unless $obj->[0] eq 'table';
+			$obj->[1]{"$key->[0]_$key->[1]"} = $val;
 
 
 		} elsif ($op eq 'bn') {

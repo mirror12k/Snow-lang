@@ -322,7 +322,8 @@ sub parse_bytecode_expression {
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return $self->parse_bytecode_identifier($expression->{identifier})
 	} elsif ($expression->{type} eq 'access_expression') {
-		return lo => $expression->{identifier}
+		return $self->parse_bytecode_expression($expression->{expression}),
+			lo => $expression->{identifier}
 	} elsif ($expression->{type} eq 'unary_expression') {
 		return
 			ss => undef,
@@ -396,7 +397,10 @@ sub parse_bytecode_lvalue_expression {
 			$self->parse_bytecode_expression($expression->{expression}),
 			so => $expression->{identifier},
 	} elsif ($expression->{type} eq 'expressive_access_expression') {
-		... #TODO
+		return
+			$self->parse_bytecode_expression($expression->{expression}),
+			$self->parse_bytecode_expression($expression->{access_expression}),
+			vo => $expression->{identifier},
 	} else {
 		die "unimplemented expression type $expression->{type}";
 	}

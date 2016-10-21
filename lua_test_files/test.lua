@@ -332,6 +332,8 @@
 local t = {5,4,3, a='asdf', b='beta', [5+4] = 'arith', [false] = true}
 
 print(t)
+print(t.a, t.b, t.c)
+t['a'], t['c'] = 15, true
+print(t.a, t.b, t.c)
 
-dump(t)
-
+-- dump(t)

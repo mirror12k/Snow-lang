@@ -66,7 +66,7 @@ sub parse_bytecode_chunk {
 	unshift @bytecode, sv => scalar @$args_list if $self->{is_vararg_chunk};
 	unshift @bytecode, yl => 0 if defined $args_list and @$args_list > 0;
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
-	say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # inspect final bytecode
+	# say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # inspect final bytecode
 
 	return [ @bytecode ]
 }
@@ -197,7 +197,7 @@ sub parse_bytecode_block {
 				_label => $expression_label,
 				cs => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
-				fc => undef,
+				cf => undef,
 				yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 				ds => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
@@ -394,7 +394,11 @@ sub parse_bytecode_expression {
 		;
 		return @code;
 	} elsif ($expression->{type} eq 'function_expression') {
-		my $function_val = { chunk => $expression->{block}, args_list => $expression->{args_list} };
+		my $function_val = {
+			chunk => $expression->{block},
+			args_list => $expression->{args_list},
+			# variable_context => [ { %{$self->{current_local_scope}} }, map { %$_ }, @{$self->{local_scope_stack}} ],
+		};
 		push @{$self->{bytecode_chunk_queue}}, $function_val;
 		return
 			ps => [ function => $function_val ],
@@ -405,7 +409,7 @@ sub parse_bytecode_expression {
 			$self->parse_bytecode_expression($expression->{expression}),
 			ts => 1,
 			$self->parse_bytecode_expression_list($expression->{args_list}),
-			fc => undef,
+			cf => undef,
 			ms => undef,
 	} else {
 		die "unimplemented expression type $expression->{type}";

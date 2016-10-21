@@ -127,7 +127,13 @@ sub execute_bytecode {
 		} elsif ($op eq 'lv') {
 			push @stack, @vararg;
 
-		} elsif ($op eq 'fc') {
+		} elsif ($op eq 'fj') {
+			$i += $arg if (pop @stack)->[1] == 0;
+		} elsif ($op eq 'tj') {
+			$i += $arg if (pop @stack)->[1] == 1;
+		} elsif ($op eq 'aj') {
+			$i += $arg;
+		} elsif ($op eq 'cf') {
 			my $function = shift @stack;
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
 			my ($status, @data);
@@ -139,14 +145,6 @@ sub execute_bytecode {
 			# say "functon returned $status => @data";
 			return $status, @data if $status ne 'return';
 			@stack = @data;
-			# @stack = (@{pop @saved_stacks}, @data);
-			# push @stack, @data;
-		} elsif ($op eq 'fj') {
-			$i += $arg if (pop @stack)->[1] == 0;
-		} elsif ($op eq 'tj') {
-			$i += $arg if (pop @stack)->[1] == 1;
-		} elsif ($op eq 'aj') {
-			$i += $arg;
 		} elsif ($op eq 'lf') {
 			return return => @stack
 

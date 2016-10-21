@@ -514,8 +514,6 @@ sub parse_syntax_args_list {
 		}
 	}
 
-	say "got args_list: ", join ',', @args_list;
-
 	return @args_list
 }
 

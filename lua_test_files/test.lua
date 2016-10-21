@@ -347,31 +347,31 @@
 
 -- f(5, 4 , 3)
 
-function f (...)
-	local a,b = ...
-	print(a,b)
-end
+-- function f (...)
+-- 	local a,b = ...
+-- 	print(a,b)
+-- end
 
-f(5)
-f(5,4)
-f(5,4, 3)
+-- f(5)
+-- f(5,4)
+-- f(5,4, 3)
 
-function g (...)
-	local a,b = ..., 'lol'
-	print(a,b)
-end
+-- function g (...)
+-- 	local a,b = ..., 'lol'
+-- 	print(a,b)
+-- end
 
-g(5)
-g(5,4)
-g(5,4, 3)
+-- g(5)
+-- g(5,4)
+-- g(5,4, 3)
 
-function h (a, ...)
-	g(...)
-end
+-- function h (a, ...)
+-- 	g(...)
+-- end
 
-h(5)
-h(5,4)
-h(5,4, 3)
+-- h(5)
+-- h(5,4)
+-- h(5,4, 3)
 
 
 

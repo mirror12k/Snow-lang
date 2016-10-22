@@ -27,7 +27,7 @@ sub parse {
 	my ($self, $text) = @_;
 	$self->SUPER::parse($text);
 
-	$self->{bytecode_chunk} = { chunk => $self->{syntax_tree}, closure_list => [] };
+	$self->{bytecode_chunk} = { chunk => $self->{syntax_tree}, closure_list => [], closure_map => {} };
 	$self->{bytecode_chunk_queue} = [ $self->{bytecode_chunk} ];
 
 	while (@{$self->{bytecode_chunk_queue}}) {
@@ -385,6 +385,7 @@ sub parse_bytecode_expression {
 			chunk => $expression->{block},
 			args_list => $expression->{args_list},
 			closure_list => [],
+			closure_map => {},
 			variable_context => $self->compile_variable_context,
 			parent_chunk => $self->{current_chunk},
 		};
@@ -437,42 +438,19 @@ sub parse_bytecode_identifier {
 	my @chunk_stack;
 	my $chunk = $self->{current_chunk};
 	while (defined $chunk) {
+		push @chunk_stack, $chunk;
 		if (defined $chunk->{variable_context} and exists $chunk->{variable_context}{$identifier}) {
 			my $index = "$chunk->{variable_context}{$identifier}";
-			my $closure_index;
-			while (defined $chunk) {
-				if (defined $index) {
-					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
-						if ($index eq $chunk->{closure_list}[$i]) {
-							$closure_index = $i;
-							last
-						}
-					}
-					unless (defined $closure_index) {
-						push @{$chunk->{closure_list}}, $index;
-						$closure_index = $#{$chunk->{closure_list}};
-					}
-					undef $index;
-				} else {
-					my $next_closure_index;
-					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
-						if ("c$closure_index" eq $chunk->{closure_list}[$i]) {
-							$next_closure_index = $i;
-							last
-						}
-					}
-					unless (defined $next_closure_index) {
-						push @{$chunk->{closure_list}}, "c$closure_index";
-						$next_closure_index = $#{$chunk->{closure_list}};
-					}
-					$closure_index = $next_closure_index;
+			while ($chunk = pop @chunk_stack) {
+				unless (exists $chunk->{closure_map}{$index}) {
+					push @{$chunk->{closure_list}}, $index;
+					$chunk->{closure_map}{$index} = "c$#{$chunk->{closure_list}}"
 				}
-				$chunk = pop @chunk_stack;
+				$index = $chunk->{closure_map}{$index};
 			}
-
-			return lc => $closure_index
+			$index = int ($index =~ s/^c(\d+)$/$1/r);
+			return lc => $index
 		}
-		push @chunk_stack, $chunk;
 		$chunk = $chunk->{parent_chunk};
 	}
 
@@ -483,55 +461,9 @@ sub parse_bytecode_identifier {
 sub parse_bytecode_lvalue_identifier {
 	my ($self, $identifier) = @_;
 
-	return sl => $self->{current_local_scope}{$identifier} if defined $self->{current_local_scope} and exists $self->{current_local_scope}{$identifier};
+	my ($op, $arg) = $self->parse_bytecode_identifier($identifier);
 
-	foreach my $i (reverse 0 .. $#{$self->{local_scope_stack}}) {
-		return sl => $self->{local_scope_stack}[$i]{$identifier} if exists $self->{local_scope_stack}[$i]{$identifier};
-	}
-
-	my @chunk_stack;
-	my $chunk = $self->{current_chunk};
-	while (defined $chunk) {
-		if (defined $chunk->{variable_context} and exists $chunk->{variable_context}{$identifier}) {
-			my $index = "$chunk->{variable_context}{$identifier}";
-			my $closure_index;
-			while (defined $chunk) {
-				if (defined $index) {
-					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
-						if ($index eq $chunk->{closure_list}[$i]) {
-							$closure_index = $i;
-							last
-						}
-					}
-					unless (defined $closure_index) {
-						push @{$chunk->{closure_list}}, $index;
-						$closure_index = $#{$chunk->{closure_list}};
-					}
-					undef $index;
-				} else {
-					my $next_closure_index;
-					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
-						if ("c$closure_index" eq $chunk->{closure_list}[$i]) {
-							$next_closure_index = $i;
-							last
-						}
-					}
-					unless (defined $next_closure_index) {
-						push @{$chunk->{closure_list}}, "c$closure_index";
-						$next_closure_index = $#{$chunk->{closure_list}};
-					}
-					$closure_index = $next_closure_index;
-				}
-				$chunk = pop @chunk_stack;
-			}
-
-			return sc => $closure_index
-		}
-		push @chunk_stack, $chunk;
-		$chunk = $chunk->{parent_chunk};
-	}
-
-	return sg => $identifier
+	return $op =~ s/^l/s/r, $arg
 }
 
 sub parse_bytecode_user_label {

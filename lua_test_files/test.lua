@@ -379,35 +379,35 @@ a = 3
 
 local a = 5
 
--- ;(function ()
--- 	print(a)
--- end)()
+;(function ()
+	print(a)
+end)()
 
--- ;(function ()
--- 	a = 4
--- end)()
+;(function ()
+	a = 4
+end)()
 
--- print(a)
-
-
--- function closure_counter()
--- 	local i = 0
--- 	return function ()
--- 		i = i + 1
--- 		return i
--- 	end
--- end
+print(a)
 
 
--- fun = closure_counter()
--- print("counter 1:", fun())
--- print("counter 1:", fun())
--- print("counter 1:", fun())
+function closure_counter()
+	local i = 0
+	return function ()
+		i = i + 1
+		return i
+	end
+end
 
--- fun = closure_counter()
--- print("counter 2:", fun())
--- print("counter 2:", fun())
--- print("counter 2:", fun())
+
+fun = closure_counter()
+print("counter 1:", fun())
+print("counter 1:", fun())
+print("counter 1:", fun())
+
+fun = closure_counter()
+print("counter 2:", fun())
+print("counter 2:", fun())
+print("counter 2:", fun())
 
 
 

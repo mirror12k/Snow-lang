@@ -374,4 +374,19 @@
 -- h(5,4, 3)
 
 
+a = 3
+
+
+local a = 5
+
+;(function ()
+	print(a)
+end)()
+
+;(function ()
+	a = 4
+end)()
+
+print(a)
+
 

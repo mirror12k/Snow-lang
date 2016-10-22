@@ -20,8 +20,8 @@ foreach my $file (<lua_test_files/*>) {
 	foreach (0 .. $#lua_lines) {
 		unless (defined $snow_lines[$_] and $lua_lines[$_] eq $snow_lines[$_]) {
 			say "\tinconsistent lines [$_]";
-			say "\t$lua_lines[$_]" if defined $lua_lines[$_];
-			say "\t$snow_lines[$_]" if defined $snow_lines[$_];
+			print "\t\t$lua_lines[$_]" if defined $lua_lines[$_];
+			print "\t\t$snow_lines[$_]" if defined $snow_lines[$_];
 
 			$error = 1;
 		}

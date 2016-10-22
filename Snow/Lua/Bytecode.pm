@@ -7,6 +7,7 @@ use feature 'say';
 
 use Data::Dumper;
 use Carp;
+use List::Util 'any';
 
 
 
@@ -26,32 +27,36 @@ sub parse {
 	my ($self, $text) = @_;
 	$self->SUPER::parse($text);
 
-	$self->{bytecode_chunk_queue} = [];
-	$self->{bytecode_chunk} = $self->parse_bytecode_chunk($self->{syntax_tree});
+	$self->{bytecode_chunk} = { chunk => $self->{syntax_tree}, closure_list => [] };
+	$self->{bytecode_chunk_queue} = [ $self->{bytecode_chunk} ];
 
 	while (@{$self->{bytecode_chunk_queue}}) {
 		my $chunk_record = shift @{$self->{bytecode_chunk_queue}};
-		$chunk_record->{chunk} = $self->parse_bytecode_chunk($chunk_record->{chunk}, $chunk_record->{args_list});
+		$chunk_record->{chunk} = $self->parse_bytecode_chunk_record($chunk_record);
 	}
 	return $self->{bytecode_chunk}
 }
 
-sub parse_bytecode_chunk {
-	my ($self, $chunk, $args_list) = @_;
+sub parse_bytecode_chunk_record {
+	my ($self, $chunk) = @_;
+
+	$self->{current_chunk} = $chunk;
 
 	$self->{local_scope_stack} = [];
-	$self->{current_local_index} = 0;
 	$self->{current_local_scope} = undef;
+	$self->{current_local_index} = 0;
 
 	$self->{local_label_stack} = [];
 	$self->{current_local_labels} = undef;
-
 	$self->{current_break_label} = undef;
 
 	$self->{current_jump_index} = 0;
 
-	$self->{is_vararg_chunk} = (defined $args_list and @$args_list > 0 and $args_list->[-1] eq '...');
+	$self->{current_variable_context} = $chunk->{variable_context};
 
+	$self->{is_vararg_chunk} = (defined $chunk->{args_list} and @{$chunk->{args_list}} > 0 and $chunk->{args_list}[-1] eq '...');
+
+	my $args_list = $chunk->{args_list};
 	$args_list = [ grep $_ !~ /^\.\.\.$/, @$args_list ] if $self->{is_vararg_chunk};
 
 
@@ -59,14 +64,14 @@ sub parse_bytecode_chunk {
 		$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @$args_list;
 	}
 
-	my @block = $self->parse_bytecode_block($chunk);
-	# say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # inspect final bytecode
+	my @block = $self->parse_bytecode_block($chunk->{chunk});
+	# say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # DEBUG BYTECODE
 	my @bytecode = $self->resolve_bytecode_labels(@block);
 	unshift @bytecode, ts => 0 if defined $args_list;
 	unshift @bytecode, sv => scalar @$args_list if $self->{is_vararg_chunk};
 	unshift @bytecode, yl => 0 if defined $args_list and @$args_list > 0;
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
-	# say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # inspect final bytecode
+	# say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # DEBUG BYTECODE
 
 	return [ @bytecode ]
 }
@@ -79,8 +84,6 @@ sub parse_bytecode_block {
 	push @{$self->{local_label_stack}}, $self->{current_local_labels} if defined $self->{current_local_labels};
 	$self->{current_local_labels} = {};
 
-	my $locals_loaded = 0;
-	# need to precompute how many locals are loaded in order to properly support goto
 
 	# run through once to collect all local labels
 	foreach my $statement (@$block) {
@@ -247,26 +250,12 @@ sub parse_bytecode_block {
 		}
 	}
 
-	# if ($locals_loaded > 0) {
-	# 	push @bytecode, tl => $locals_loaded;
-	# 	# $self->{current_local_index} -= $locals_loaded;
-	# }
-
 	# say Dumper $self->{current_local_scope};
 	$self->{current_local_scope} = shift @{$self->{local_scope_stack}} if @{$self->{local_scope_stack}};
 	$self->{current_local_labels} = shift @{$self->{local_label_stack}} if @{$self->{local_label_stack}};
 
 	return @bytecode
 }
-
-# sub resolve_locals_size {
-# 	my ($self, @block) = @_;
-# 	foreach my $index (0 .. (@block / 2 - 1)) {
-# 		my $op = $block[$index * 2];
-# 		my $arg = $block[$index * 2 + 1];
-# 	}
-# }
-
 
 sub resolve_bytecode_labels {
 	my ($self, @block) = @_;
@@ -397,11 +386,12 @@ sub parse_bytecode_expression {
 		my $function_val = {
 			chunk => $expression->{block},
 			args_list => $expression->{args_list},
-			# variable_context => [ { %{$self->{current_local_scope}} }, map { %$_ }, @{$self->{local_scope_stack}} ],
+			closure_list => [],
+			variable_context => $self->compile_variable_context,
 		};
 		push @{$self->{bytecode_chunk_queue}}, $function_val;
 		return
-			ps => [ function => $function_val ],
+			pf => [ function => $function_val ],
 
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
@@ -445,7 +435,15 @@ sub parse_bytecode_identifier {
 		return ll => $self->{local_scope_stack}[$i]{$identifier} if exists $self->{local_scope_stack}[$i]{$identifier};
 	}
 
-	# TODO implement closure load
+	if (exists $self->{current_chunk}{variable_context}{$identifier}) {
+		my $index = $self->{current_chunk}{variable_context}{$identifier};
+
+		foreach my $i (0 .. $#{$self->{current_chunk}{closure_list}}) {
+			return lc => $i if $index eq $self->{current_chunk}{closure_list}[$i];
+		}
+		push @{$self->{current_chunk}{closure_list}}, $index;
+		return lc => $#{$self->{current_chunk}{closure_list}}
+	}
 
 	return lg => $identifier
 }
@@ -460,7 +458,15 @@ sub parse_bytecode_lvalue_identifier {
 		return sl => $self->{local_scope_stack}[$i]{$identifier} if exists $self->{local_scope_stack}[$i]{$identifier};
 	}
 
-	# TODO implement closure load
+	if (exists $self->{current_chunk}{variable_context}{$identifier}) {
+		my $index = $self->{current_chunk}{variable_context}{$identifier};
+
+		foreach my $i (0 .. $#{$self->{current_chunk}{closure_list}}) {
+			return sc => $i if $index eq $self->{current_chunk}{closure_list}[$i];
+		}
+		push @{$self->{current_chunk}{closure_list}}, $index;
+		return sc => $#{$self->{current_chunk}{closure_list}}
+	}
 
 	return sg => $identifier
 }
@@ -489,6 +495,13 @@ sub dump_bytecode {
 		$s .= "\t$op" . (ref $arg ? " => $arg->[0] [$arg->[1]]" : defined $arg ? " => $arg" : '') . "\n";
 	}
 	return $s
+}
+
+
+sub compile_variable_context {
+	my ($self) = @_;
+	my %context = ( (map { {%$_} } @{$self->{local_scope_stack}}), %{$self->{current_local_scope}} );
+	return \%context
 }
 
 

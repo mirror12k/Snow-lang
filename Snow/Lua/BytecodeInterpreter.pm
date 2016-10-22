@@ -59,7 +59,7 @@ sub execute {
 	my ($self, $bytecode_chunk) = @_;
 	$bytecode_chunk = $bytecode_chunk // $self->{bytecode_chunk};
 
-	my ($status, @data) = $self->execute_bytecode($bytecode_chunk);
+	my ($status, @data) = $self->execute_bytecode_chunk($bytecode_chunk);
 
 	if ($status eq 'error') {
 		warn "lua runtime error: @data";
@@ -68,23 +68,26 @@ sub execute {
 
 
 
-sub execute_bytecode {
+sub execute_bytecode_chunk {
 	my ($self, $bytecode_chunk, @args) = @_;
 
-	my $i = 0;
+	my $bytecode = $bytecode_chunk->{chunk};
 
-	my @saved_stacks;
-	my @stack = @args;
+	my @closures = @{$bytecode_chunk->{closures}} if defined $bytecode_chunk->{closures};
 	my @vararg;
 	my @locals;
+	
+	my @saved_stacks;
+	my @stack = @args;
 
-	while ($i < @$bytecode_chunk) {
-		my $op = $bytecode_chunk->[$i++];
-		my $arg = $bytecode_chunk->[$i++];
+	my $i = 0;
+	while ($i < @$bytecode) {
+		my $op = $bytecode->[$i++];
+		my $arg = $bytecode->[$i++];
 
-		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack;
-		# # say "\t", $self->dump_stack( \@stack );
-		# say "$op => ", $arg // '';
+		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack; # DEBUG RUNTIME
+		# say "\t", $self->dump_stack( \@stack );
+		# say "$op => ", $arg // ''; # DEBUG RUNTIME
 
 		if ($op eq 'ps') {
 			push @stack, $arg;
@@ -122,6 +125,11 @@ sub execute_bytecode {
 		# } elsif ($op eq 'tl') {
 		# 	@locals = @locals[0 .. (-$arg - 1)];
 
+		} elsif ($op eq 'lc') {
+			push @stack, ${$closures[$arg]};
+		} elsif ($op eq 'sc') {
+			${$closures[$arg]} = pop @stack // $lua_nil_constant;
+
 		} elsif ($op eq 'sv') {
 			@vararg = @stack[$arg .. $#stack];
 		} elsif ($op eq 'lv') {
@@ -135,16 +143,22 @@ sub execute_bytecode {
 			$i += $arg;
 		} elsif ($op eq 'cf') {
 			my $function = shift @stack;
+			# say "calling function $function->[0] : $function->[1]"; # DEBUG RUNTIME
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
 			my ($status, @data);
 			if ($function->[1]{is_native}) {
 				($status, @data) = $function->[1]{function}->($self, @stack);
 			} else {
-				($status, @data) = $self->execute_bytecode($function->[1]{chunk}, @stack);
+				($status, @data) = $self->execute_bytecode_chunk($function->[1], @stack);
 			}
 			# say "functon returned $status => @data";
 			return $status, @data if $status ne 'return';
 			@stack = @data;
+		} elsif ($op eq 'pf') {
+			# say "closure_list ", Dumper $arg->[1]{closure_list};
+			my $closures = [ map \($locals[$_]), @{$arg->[1]{closure_list}} ];
+			# say "closures: ", Dumper $closures;
+			push @stack, [ function => { chunk => $arg->[1]{chunk}, closures => $closures } ];
 		} elsif ($op eq 'lf') {
 			return return => @stack
 
@@ -319,6 +333,8 @@ sub execute_bytecode {
 			die "unimplemented bytecode type $op";
 		}
 	}
+
+	# say "end of chunk"; # DEBUG RUNTIME
 
 	return return =>
 }

@@ -434,22 +434,13 @@ sub parse_bytecode_identifier {
 		return ll => $self->{local_scope_stack}[$i]{$identifier} if exists $self->{local_scope_stack}[$i]{$identifier};
 	}
 
-	# if (defined $self->{current_chunk}{variable_context} and exists $self->{current_chunk}{variable_context}{$identifier}) {
-	# 	my $index = $self->{current_chunk}{variable_context}{$identifier};
-	# 	foreach my $i (0 .. $#{$self->{current_chunk}{closure_list}}) {
-	# 		return lc => $i if $index eq $self->{current_chunk}{closure_list}[$i];
-	# 	}
-	# 	push @{$self->{current_chunk}{closure_list}}, $index;
-	# 	return lc => $#{$self->{current_chunk}{closure_list}}
-	# }
-
 	my @chunk_stack;
 	my $chunk = $self->{current_chunk};
 	while (defined $chunk) {
 		if (defined $chunk->{variable_context} and exists $chunk->{variable_context}{$identifier}) {
 			my $index = "$chunk->{variable_context}{$identifier}";
 			my $closure_index;
-			while (@chunk_stack) {
+			while (defined $chunk) {
 				if (defined $index) {
 					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
 						if ($index eq $chunk->{closure_list}[$i]) {
@@ -463,35 +454,20 @@ sub parse_bytecode_identifier {
 					}
 					undef $index;
 				} else {
-					...
+					my $next_closure_index;
+					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
+						if ("c$closure_index" eq $chunk->{closure_list}[$i]) {
+							$next_closure_index = $i;
+							last
+						}
+					}
+					unless (defined $next_closure_index) {
+						push @{$chunk->{closure_list}}, "c$closure_index";
+						$next_closure_index = $#{$chunk->{closure_list}};
+					}
+					$closure_index = $next_closure_index;
 				}
 				$chunk = pop @chunk_stack;
-			}
-
-			if (defined $index) {
-				foreach my $i (0 .. $#{$self->{current_chunk}{closure_list}}) {
-					if ($index eq $self->{current_chunk}{closure_list}[$i]) {
-						$closure_index = $i;
-						last
-					}
-				}
-				unless (defined $closure_index) {
-					push @{$self->{current_chunk}{closure_list}}, $index;
-					$closure_index = $#{$self->{current_chunk}{closure_list}};
-				}
-			} else {
-				my $next_closure_index;
-				foreach my $i (0 .. $#{$self->{current_chunk}{closure_list}}) {
-					if ("c$closure_index" eq $self->{current_chunk}{closure_list}[$i]) {
-						$next_closure_index = $i;
-						last
-					}
-				}
-				unless (defined $next_closure_index) {
-					push @{$self->{current_chunk}{closure_list}}, "c$closure_index";
-					$next_closure_index = $#{$self->{current_chunk}{closure_list}};
-				}
-				$closure_index = $next_closure_index;
 			}
 
 			return lc => $closure_index
@@ -513,14 +489,46 @@ sub parse_bytecode_lvalue_identifier {
 		return sl => $self->{local_scope_stack}[$i]{$identifier} if exists $self->{local_scope_stack}[$i]{$identifier};
 	}
 
-	if (defined $self->{current_chunk}{variable_context} and exists $self->{current_chunk}{variable_context}{$identifier}) {
-		my $index = $self->{current_chunk}{variable_context}{$identifier};
+	my @chunk_stack;
+	my $chunk = $self->{current_chunk};
+	while (defined $chunk) {
+		if (defined $chunk->{variable_context} and exists $chunk->{variable_context}{$identifier}) {
+			my $index = "$chunk->{variable_context}{$identifier}";
+			my $closure_index;
+			while (defined $chunk) {
+				if (defined $index) {
+					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
+						if ($index eq $chunk->{closure_list}[$i]) {
+							$closure_index = $i;
+							last
+						}
+					}
+					unless (defined $closure_index) {
+						push @{$chunk->{closure_list}}, $index;
+						$closure_index = $#{$chunk->{closure_list}};
+					}
+					undef $index;
+				} else {
+					my $next_closure_index;
+					foreach my $i (0 .. $#{$chunk->{closure_list}}) {
+						if ("c$closure_index" eq $chunk->{closure_list}[$i]) {
+							$next_closure_index = $i;
+							last
+						}
+					}
+					unless (defined $next_closure_index) {
+						push @{$chunk->{closure_list}}, "c$closure_index";
+						$next_closure_index = $#{$chunk->{closure_list}};
+					}
+					$closure_index = $next_closure_index;
+				}
+				$chunk = pop @chunk_stack;
+			}
 
-		foreach my $i (0 .. $#{$self->{current_chunk}{closure_list}}) {
-			return sc => $i if $index eq $self->{current_chunk}{closure_list}[$i];
+			return sc => $closure_index
 		}
-		push @{$self->{current_chunk}{closure_list}}, $index;
-		return sc => $#{$self->{current_chunk}{closure_list}}
+		push @chunk_stack, $chunk;
+		$chunk = $chunk->{parent_chunk};
 	}
 
 	return sg => $identifier

@@ -414,8 +414,22 @@ local a = 5
 function test ()
 	return function ()
 		print("closure_closure'd a: ", a)
+		a = a + 1
+	end
+end
+
+function test2 ()
+	return function ()
+		return function ()
+			print("super closure_closure'd a: ", a)
+			a = a + 1
+		end
 	end
 end
 
 test()()
+print(a)
+test2()()()
+print(a)
+
 

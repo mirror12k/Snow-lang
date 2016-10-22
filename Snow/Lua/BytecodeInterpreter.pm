@@ -73,7 +73,7 @@ sub execute_bytecode_chunk {
 
 	my $bytecode = $bytecode_chunk->{chunk};
 
-	my @closures = @{$bytecode_chunk->{closures}} if defined $bytecode_chunk->{closures};
+	my @local_closures = @{$bytecode_chunk->{closures}} if defined $bytecode_chunk->{closures};
 	my @vararg;
 	my @locals;
 	
@@ -126,9 +126,9 @@ sub execute_bytecode_chunk {
 		# 	@locals = @locals[0 .. (-$arg - 1)];
 
 		} elsif ($op eq 'lc') {
-			push @stack, ${$closures[$arg]};
+			push @stack, ${$local_closures[$arg]};
 		} elsif ($op eq 'sc') {
-			${$closures[$arg]} = pop @stack // $lua_nil_constant;
+			${$local_closures[$arg]} = pop @stack // $lua_nil_constant;
 
 		} elsif ($op eq 'sv') {
 			@vararg = @stack[$arg .. $#stack];
@@ -151,12 +151,12 @@ sub execute_bytecode_chunk {
 			} else {
 				($status, @data) = $self->execute_bytecode_chunk($function->[1], @stack);
 			}
-			# say "functon returned $status => @data";
+			# say "functon returned $status => @data"; #DEBUG RUNTIME
 			return $status, @data if $status ne 'return';
 			@stack = @data;
 		} elsif ($op eq 'pf') {
 			# say "closure_list ", Dumper $arg->[1]{closure_list};
-			my $closures = [ map \($locals[$_]), @{$arg->[1]{closure_list}} ];
+			my $closures = [ map { /^c(\d+)$/ ? $local_closures[$1] : \($locals[$_]) } @{$arg->[1]{closure_list}} ];
 			# say "closures: ", Dumper $closures;
 			push @stack, [ function => { chunk => $arg->[1]{chunk}, closures => $closures } ];
 		} elsif ($op eq 'lf') {
@@ -333,8 +333,6 @@ sub execute_bytecode_chunk {
 			die "unimplemented bytecode type $op";
 		}
 	}
-
-	# say "end of chunk"; # DEBUG RUNTIME
 
 	return return =>
 }

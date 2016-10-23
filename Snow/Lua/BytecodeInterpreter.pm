@@ -129,27 +129,32 @@ sub execute {
 		if ($status eq 'resume') {
 			# warn "resuming coroutine";
 			my $new_coroutine = shift @data;
+			my @arg_stack = @{shift @data};
+			$new_coroutine->[1]{stack} = [ @arg_stack[ 1 .. $#arg_stack ] ];
 			$current_coroutine->[1]{call_frames} = shift @data;
 			$current_coroutine->[1]{saved_stacks} = shift @data;
-			$current_coroutine->[1]{stack} = shift @data;
+			$current_coroutine->[1]{stack} = [];
 			push @coroutine_stack, $current_coroutine;
 			$current_coroutine->[1]{status} = 'normal';
 			$current_coroutine = $new_coroutine;
 
 		} elsif ($status eq 'error') {
-			warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n" unless @coroutine_stack;
+			my $error = "lua: $data[0]\n" . join ("\n", @data[1 .. $#data]) . "\n";
+			warn $error unless @coroutine_stack;
 			$current_coroutine->[1]{status} = 'dead';
 			$current_coroutine = pop @coroutine_stack;
+			$current_coroutine->[1]{stack} = [ [ boolean => 0 ], [ string => $error ] ] if defined $current_coroutine;
 		} elsif ($status eq 'return') {
 			$current_coroutine->[1]{status} = 'dead';
 			$current_coroutine = pop @coroutine_stack;
+			$current_coroutine->[1]{stack} = [ [ boolean => 1 ], @data ] if defined $current_coroutine;
 		}
 	}
 }
 
 sub create_coroutine {
 	my ($self, $bytecode_chunk, $is_main) = @_;
-	return [ thread => { chunk => $bytecode_chunk, is_main => $is_main, status => 'suspended' } ]
+	return [ thread => { chunk => $bytecode_chunk, is_main => $is_main, status => 'suspended', stack => [] } ]
 }
 
 sub run_coroutine {
@@ -157,22 +162,21 @@ sub run_coroutine {
 	$self->{running_coroutine} = $coroutine;
 	$coroutine->[1]{status} = 'running';
 	my @args;
+	@args = ($coroutine->[1]{call_frames}, $coroutine->[1]{saved_stacks}) if defined $coroutine->[1]{call_frames};
 	# warn "debug dump: ", Dumper $coroutine->[1];
-	@args = ($coroutine->[1]{call_frames}, $coroutine->[1]{saved_stacks}, $coroutine->[1]{stack}) if defined $coroutine->[1]{call_frames};
-	return $self->execute_bytecode_chunk($coroutine->[1]{chunk}, @args);
+	return $self->execute_bytecode_chunk($coroutine->[1]{chunk}, $coroutine->[1]{stack}, @args);
 }
 
 
 sub execute_bytecode_chunk {
-	my ($self, $bytecode_chunk, @reload) = @_;
+	my ($self, $bytecode_chunk, $stack_load, @reload) = @_;
 
 	# data persistent across frames
 	my @call_frames;
 	my @saved_stacks;
-	my @stack;
+	my @stack = @$stack_load;
 	if (@reload) {
 		@call_frames = @{shift @reload};
-		@saved_stacks = @{shift @reload};
 		@saved_stacks = @{shift @reload};
 
 		push @call_frames, { dummy => 1 };
@@ -270,7 +274,7 @@ sub execute_bytecode_chunk {
 			if ($function->[1]{is_native}) {
 				my ($status, @data) = $function->[1]{function}->($self, @stack);
 				# say "functon returned $status => @data"; #DEBUG RUNTIME
-				return $status, $data[0], \@call_frames, \@saved_stacks, \@stack if $status eq 'resume';
+				return $status, $data[0], \@stack, \@call_frames, \@saved_stacks if $status eq 'resume';
 				return $status, @data if $status ne 'return';
 				@stack = @data;
 			} else {

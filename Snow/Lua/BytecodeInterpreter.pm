@@ -108,19 +108,24 @@ sub execute {
 
 
 sub execute_bytecode_chunk {
-	my ($self, $bytecode_chunk, @args) = @_;
+	my ($self, $bytecode_chunk) = @_;
+
+	# data persistent across chunks
+	my @call_frames;
+	my @saved_stacks;
+	my @stack;
+
+	INIT_FRAME:
+
+	# data localized to a single stack chunk
+	my $local_closures = $bytecode_chunk->{closures} if defined $bytecode_chunk->{closures};
+	my $vararg;
+	my $locals = [];
 
 	my $bytecode = $bytecode_chunk->{chunk};
-
-	my @local_closures = @{$bytecode_chunk->{closures}} if defined $bytecode_chunk->{closures};
-	my @vararg;
-	my @locals;
-	
-	my @saved_stacks;
-	my @stack = @args;
-
 	my $i = 0;
-	while ($i < @$bytecode) {
+	
+	RUN_BYTECODE: while ($i < @$bytecode) {
 		my $op = $bytecode->[$i++];
 		my $arg = $bytecode->[$i++];
 
@@ -156,27 +161,27 @@ sub execute_bytecode_chunk {
 			$self->{global_scope}{$arg} = pop @stack // $lua_nil_constant;
 
 		} elsif ($op eq 'll') {
-			push @stack, $locals[$arg];
+			push @stack, $locals->[$arg];
 		} elsif ($op eq 'sl') {
-			$locals[$arg] = pop @stack // $lua_nil_constant;
+			$locals->[$arg] = pop @stack // $lua_nil_constant;
 		} elsif ($op eq 'yl') {
-			@locals[$arg .. $arg + $#stack] = @stack;
+			@$locals[$arg .. $arg + $#stack] = @stack;
 		} elsif ($op eq 'xl') {
-			@locals = ($lua_nil_constant) x $arg;
+			@$locals = ($lua_nil_constant) x $arg;
 		# } elsif ($op eq 'tl') {
 		# 	@locals = @locals[0 .. (-$arg - 1)];
 
 		} elsif ($op eq 'lc') {
-			push @stack, ${$local_closures[$arg]};
+			push @stack, ${$local_closures->[$arg]};
 		} elsif ($op eq 'sc') {
-			${$local_closures[$arg]} = pop @stack // $lua_nil_constant;
+			${$local_closures->[$arg]} = pop @stack // $lua_nil_constant;
 
 		} elsif ($op eq 'sv') {
-			@vararg = @stack[$arg .. $#stack];
+			$vararg = [ @stack[$arg .. $#stack] ];
 		} elsif ($op eq 'lv') {
-			push @stack, @vararg;
+			push @stack, @$vararg;
 		} elsif ($op eq 'dv') {
-			push @stack, $vararg[0] // $lua_nil_constant;
+			push @stack, $vararg->[0] // $lua_nil_constant;
 
 		} elsif ($op eq 'fj') {
 			$i += $arg if (pop @stack)->[1] == 0;
@@ -191,26 +196,31 @@ sub execute_bytecode_chunk {
 			my ($status, @data);
 			if ($function->[1]{is_native}) {
 				($status, @data) = $function->[1]{function}->($self, @stack);
+				# say "functon returned $status => @data"; #DEBUG RUNTIME
+				return $status, @data if $status ne 'return';
+				@stack = @data;
 			} else {
-				($status, @data) = $self->execute_bytecode_chunk($function->[1], @stack);
+				push @call_frames, { locals => $locals, vararg => $vararg, local_closures => $local_closures,
+						bytecode_chunk => $bytecode_chunk, bytecode => $bytecode, offset => $i };
+				$bytecode_chunk = $function->[1];
+				goto INIT_FRAME;
+				# ($status, @data) = $self->execute_bytecode_chunk($function->[1], @stack);
 			}
-			# say "functon returned $status => @data"; #DEBUG RUNTIME
-			return $status, @data if $status ne 'return';
-			@stack = @data;
-			@stack = map $_ // $lua_nil_constant, @stack[0 .. ($arg - 1)] if defined $arg;
+			# @stack = map $_ // $lua_nil_constant, @stack[0 .. ($arg - 1)] if defined $arg;
 		} elsif ($op eq 'pf') {
 			# say "closure_list ", Dumper $arg->[1]{closure_list};
-			my $closures = [ map { /^c(\d+)$/ ? $local_closures[$1] : \($locals[$_]) } @{$arg->[1]{closure_list}} ];
+			my $closures = [ map { /^c(\d+)$/ ? $local_closures->[$1] : \($locals->[$_]) } @{$arg->[1]{closure_list}} ];
 			# say "closures: ", Dumper $closures;
 			push @stack, [ function => { chunk => $arg->[1]{chunk}, closures => $closures } ];
 		} elsif ($op eq 'lf') {
-			return return => @stack
+			goto EXIT_FRAME;
+			# return return => @stack
 
 		} elsif ($op eq 'fr') {
 			if ($stack[-1][1] > 0) {
-				push @stack, [ boolean => $locals[$arg][1] <= $stack[-2][1] ];
+				push @stack, [ boolean => $locals->[$arg][1] <= $stack[-2][1] ];
 			} else {
-				push @stack, [ boolean => $locals[$arg][1] >= $stack[-2][1] ];
+				push @stack, [ boolean => $locals->[$arg][1] >= $stack[-2][1] ];
 			}
 
 		} elsif ($op eq 'bt') {
@@ -383,7 +393,12 @@ sub execute_bytecode_chunk {
 		}
 	}
 
-	return return =>
+	EXIT_FRAME:
+	return return => unless @call_frames;
+
+	my $frame = pop @call_frames;
+	($locals, $vararg, $local_closures, $bytecode_chunk, $bytecode, $i) = @$frame{qw/ locals vararg local_closures bytecode_chunk bytecode offset /};
+	goto RUN_BYTECODE
 }
 
 

@@ -61,7 +61,7 @@ sub load_libraries {
 	};
 	$self->{global_scope}{ipairs} = lua_native_function {
 		my ($self, $t) = @_;
-		return error => "bad argument #1 to type function (table expected)" unless defined $t and $t->[0] eq 'table';
+		return error => "bad argument #1 to ipairs (table expected)" unless defined $t and $t->[0] eq 'table';
 
 		return return => $ipairs_iterator, $t, [ number => 0 ]
 	};
@@ -82,7 +82,7 @@ sub load_libraries {
 	# };
 	$self->{global_scope}{type} = lua_native_function {
 		my ($self, $arg) = @_;
-		return error => "bad argument #1 to type function (value expected)" unless defined $arg;
+		return error => "bad argument #1 to type (value expected)" unless defined $arg;
 		return return => [ string => $arg->[0] ]
 	};
 	$self->{global_scope}{dump} = lua_native_function {
@@ -97,6 +97,16 @@ sub load_libraries {
 				my ($self, @args) = @_;
 				return return => $self->{running_coroutine}, [ boolean => $self->{running_coroutine}[1]{is_main} ]
 			},
+			string_create => lua_native_function {
+				my ($self, $f) = @_;
+				return error => "bad argument #1 to coroutine.create (function expected)" unless defined $f and $f->[0] eq 'function';
+				return return => $self->create_coroutine($f->[1], 0)
+			},
+			string_resume => lua_native_function {
+				my ($self, $th, @args) = @_;
+				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
+				return resume => $th
+			},
 	} ];
 }
 
@@ -107,31 +117,59 @@ sub execute {
 
 	$self->{main_coroutine} = $self->create_coroutine($self->{bytecode_chunk}, 1);
 
-	my ($status, @data) = $self->run_coroutine($self->{main_coroutine});
-	if ($status eq 'error') {
-		warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n";
+	my @coroutine_stack;
+	my $current_coroutine = $self->{main_coroutine};
+	while (defined $current_coroutine) {
+		my ($status, @data) = $self->run_coroutine($current_coroutine);
+		if ($status eq 'resume') {
+			# warn "resuming coroutine";
+			my $new_coroutine = shift @data;
+			$current_coroutine->[1]{call_frames} = shift @data;
+			$current_coroutine->[1]{saved_stacks} = shift @data;
+			$current_coroutine->[1]{stack} = shift @data;
+			push @coroutine_stack, $current_coroutine;
+			$current_coroutine = $new_coroutine;
+
+		} elsif ($status eq 'error') {
+			warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n";
+			$current_coroutine = pop @coroutine_stack;
+		} else {
+			$current_coroutine = pop @coroutine_stack;
+		}
 	}
 }
 
 sub create_coroutine {
 	my ($self, $bytecode_chunk, $is_main) = @_;
-	return [ thread => { chunk => $bytecode_chunk, is_main => $is_main } ]
+	return [ thread => { chunk => $bytecode_chunk, is_main => $is_main, status => 'suspended' } ]
 }
 
 sub run_coroutine {
 	my ($self, $coroutine) = @_;
 	$self->{running_coroutine} = $coroutine;
-	return $self->execute_bytecode_chunk($coroutine->[1]{chunk})
+	$coroutine->[1]{status} = 'running';
+	my @args;
+	# warn "debug dump: ", Dumper $coroutine->[1];
+	@args = ($coroutine->[1]{call_frames}, $coroutine->[1]{saved_stacks}, $coroutine->[1]{stack}) if defined $coroutine->[1]{call_frames};
+	return $self->execute_bytecode_chunk($coroutine->[1]{chunk}, @args);
 }
 
 
 sub execute_bytecode_chunk {
-	my ($self, $bytecode_chunk) = @_;
+	my ($self, $bytecode_chunk, @reload) = @_;
 
 	# data persistent across frames
 	my @call_frames;
 	my @saved_stacks;
 	my @stack;
+	if (@reload) {
+		@call_frames = @{shift @reload};
+		@saved_stacks = @{shift @reload};
+		@saved_stacks = @{shift @reload};
+
+		push @call_frames, { dummy => 1 };
+		goto EXIT_FRAME;
+	}
 
 	INIT_FRAME:
 
@@ -224,6 +262,7 @@ sub execute_bytecode_chunk {
 			if ($function->[1]{is_native}) {
 				my ($status, @data) = $function->[1]{function}->($self, @stack);
 				# say "functon returned $status => @data"; #DEBUG RUNTIME
+				return $status, $data[0], \@call_frames, \@saved_stacks, \@stack if $status eq 'resume';
 				return $status, @data if $status ne 'return';
 				@stack = @data;
 			} else {

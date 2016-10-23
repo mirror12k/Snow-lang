@@ -406,6 +406,17 @@ sub parse_bytecode_expression {
 			$self->parse_bytecode_expression_list($expression->{args_list}),
 			cf => undef,
 			ms => undef,
+	} elsif ($expression->{type} eq 'method_call_expression') {
+		return
+			ss => undef,
+			$self->parse_bytecode_expression($expression->{expression}),
+			ts => 1,
+			bs => undef,
+			lo => $expression->{identifier},
+			rs => undef,
+			$self->parse_bytecode_expression_list($expression->{args_list}),
+			cf => undef,
+			ms => undef,
 	} else {
 		die "unimplemented expression type $expression->{type}";
 	}

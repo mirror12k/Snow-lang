@@ -374,69 +374,15 @@
 -- h(5,4, 3)
 
 
-a = 3
 
-
-local a = 5
-
-;(function ()
-	print(a)
-end)()
-
-;(function ()
-	a = 4
-end)()
-
-print(a)
-
-
-function closure_counter()
-	local i = 0
-	return function ()
-		i = i + 1
-		return i
-	end
+for i, v in ipairs({'a','b','c'}) do
+	print('test1', i, v)
 end
 
-
-fun = closure_counter()
-print("counter 1:", fun())
-print("counter 1:", fun())
-print("counter 1:", fun())
-
-fun = closure_counter()
-print("counter 2:", fun())
-print("counter 2:", fun())
-print("counter 2:", fun())
-
-
-
-function test ()
-	return function ()
-		print("closure_closure'd a: ", a)
-		a = a + 1
-	end
+for i, v in ipairs({}) do
+	print('test2', i, v)
 end
 
-function test2 ()
-	return function ()
-		return function ()
-			print("super closure_closure'd a: ", a)
-			a = a + 1
-		end
-	end
+for i, v in ipairs({4,5, a=6, b=7}) do
+	print('test3', i, v)
 end
-
-test()()
-print(a)
-test2()()()
-print(a)
-
-
-print(type(nil))
-print(type(false))
-print(type(5), type(5.4))
-print(type(""), type("asdf"))
-print(type({}), type({asdf="asdf"}))
-print(type(function () end), type(type))
-

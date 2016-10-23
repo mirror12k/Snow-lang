@@ -62,3 +62,65 @@ end
 
 print(spawn()())
 
+
+
+print("closures:")
+
+
+a = 3
+
+
+local a = 5
+
+;(function ()
+	print(a)
+end)()
+
+;(function ()
+	a = 4
+end)()
+
+print(a)
+
+
+function closure_counter()
+	local i = 0
+	return function ()
+		i = i + 1
+		return i
+	end
+end
+
+
+fun = closure_counter()
+print("counter 1:", fun())
+print("counter 1:", fun())
+print("counter 1:", fun())
+
+fun = closure_counter()
+print("counter 2:", fun())
+print("counter 2:", fun())
+print("counter 2:", fun())
+
+
+
+function test ()
+	return function ()
+		print("closure_closure'd a: ", a)
+		a = a + 1
+	end
+end
+
+function test2 ()
+	return function ()
+		return function ()
+			print("super closure_closure'd a: ", a)
+			a = a + 1
+		end
+	end
+end
+
+test()()
+print(a)
+test2()()()
+print(a)

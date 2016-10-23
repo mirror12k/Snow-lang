@@ -52,10 +52,38 @@ sub load_libraries {
 			join "\t", map to_string($_)->[1], @args;
 		return return =>
 	};
+	my $ipairs_iterator = lua_native_function {
+		my ($self, $t, $index) = @_;
+		$index = $index->[1] + 1;
+		return return => $lua_nil_constant
+			unless exists $t->[1]{"number_$index"} and defined $t->[1]{"number_$index"} and $t->[1]{"number_$index"} != $lua_nil_constant;
+		return return => [ number => $index ], $t->[1]{"number_$index"}
+	};
+	$self->{global_scope}{ipairs} = lua_native_function {
+		my ($self, $t) = @_;
+		return error => "bad argument #1 to type function (table expected)" unless defined $t and $t->[0] eq 'table';
+
+		return return => $ipairs_iterator, $t, [ number => 0 ]
+	};
+	# my $pairs_iterator = lua_native_function {
+	# 	my ($self, $t, $index) = @_;
+	# 	my ($k, $v) = each $t->[1];
+	# 	while (defined $k and ($k eq '_metatable' or $k eq '_index')) {
+	# 		($k, $v) = each $t->[1];
+	# 	}
+	# 	return return => $lua_nil_constant unless defined $k;
+	# 	return return => [ string => $k ], $v
+	# };
+	# $self->{global_scope}{pairs} = lua_native_function {
+	# 	my ($self, $t) = @_;
+	# 	return error => "bad argument #1 to type function (table expected)" unless defined $t and $t->[0] eq 'table';
+
+	# 	return return => $pairs_iterator, $t, $lua_nil_constant
+	# };
 	$self->{global_scope}{type} = lua_native_function {
-		my ($self, @args) = @_;
-		return error => "bad argument #1 to type function (value expected)" unless defined $args[0];
-		return return => [ string => $args[0][0] ]
+		my ($self, $arg) = @_;
+		return error => "bad argument #1 to type function (value expected)" unless defined $arg;
+		return return => [ string => $arg->[0] ]
 	};
 	$self->{global_scope}{dump} = lua_native_function {
 		my ($self, @args) = @_;
@@ -97,7 +125,7 @@ sub execute_bytecode_chunk {
 		my $arg = $bytecode->[$i++];
 
 		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack; # DEBUG RUNTIME
-		# say "\t", $self->dump_stack( \@stack );
+		# # say "\t", $self->dump_stack( \@stack );
 		# say "$op => ", $arg // ''; # DEBUG RUNTIME
 
 		if ($op eq 'ps') {

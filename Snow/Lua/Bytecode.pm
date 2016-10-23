@@ -65,7 +65,7 @@ sub parse_bytecode_chunk_record {
 	my @block = $self->parse_bytecode_block($chunk->{chunk});
 	# warn "dump bytecode labels:\n", $self->dump_bytecode(\@block); # DEBUG BYTECODE
 	my @bytecode = $self->resolve_bytecode_labels(@block);
-	unshift @bytecode, ts => 0;
+	unshift @bytecode, es => undef;
 	if (defined $args_list and @$args_list > 0) {
 		unshift @bytecode, 
 			ts => scalar @$args_list,
@@ -113,24 +113,21 @@ sub parse_bytecode_block {
 			$self->{current_local_scope}{$_} = $self->{current_local_index}++ foreach @{$statement->{names_list}};
 			if (defined $statement->{expression_list}) {
 				push @bytecode,
-					ss => undef,
 					$self->parse_bytecode_expression_list($statement->{expression_list}),
 					ts => scalar @{$statement->{names_list}},
 					yl => $self->{current_local_scope}{$statement->{names_list}[0]},
-					ds => undef,
+					es => undef,
 			}
 		} elsif ($statement->{type} eq 'assignment_statement') {
 			push @bytecode,
-				ss => undef,
 				$self->parse_bytecode_expression_list($statement->{expression_list}),
 				rs => undef,
 				( map $self->parse_bytecode_lvalue_expression($_), @{$statement->{var_list}} ),
-				ds => undef,
+				es => undef,
 		} elsif ($statement->{type} eq 'call_statement') {
 			push @bytecode,
-				ss => undef,
 				$self->parse_bytecode_expression(multi => $statement->{expression}),
-				ds => undef,
+				es => undef,
 		} elsif ($statement->{type} eq 'until_statement') {
 			# TODO support local variable application in the expression part (WHY lua???)
 			my $repeat_label = "repeat_" . $self->{current_jump_index}++;
@@ -169,7 +166,6 @@ sub parse_bytecode_block {
 			my $last_break_label = $self->{current_break_label};
 			$self->{current_break_label} = $end_label;
 			push @bytecode,
-				ss => undef,
 				$self->parse_bytecode_expression(single => $statement->{expression_start}),
 				# TODO: cast number on these values
 				sl => $iter_var,
@@ -178,14 +174,16 @@ sub parse_bytecode_block {
 				_label => $expression_label,
 				fr => $iter_var,
 				fj => $end_label,
+				ss => undef,
 				$self->parse_bytecode_block($statement->{block}),
+				ds => undef,
 				bs => undef,
 				ll => $iter_var,
 				bn => '+',
 				sl => $iter_var,
 				aj => $expression_label,
 				_label => $end_label,
-				ds => undef,
+				es => undef,
 			;
 			$self->{current_break_label} = $last_break_label;
 		} elsif ($statement->{type} eq 'iter_statement') {
@@ -195,7 +193,6 @@ sub parse_bytecode_block {
 			my $last_break_label = $self->{current_break_label};
 			$self->{current_break_label} = $end_label;
 			push @bytecode,
-				ss => undef,
 				$self->parse_bytecode_expression_list($statement->{expression_list}),
 				ts => 3,
 				sl => $self->{current_local_scope}{$statement->{names_list}[0]},
@@ -209,10 +206,12 @@ sub parse_bytecode_block {
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
 				bt => undef,
 				fj => $end_label,
+				ss => undef,
 				$self->parse_bytecode_block($statement->{block}),
+				ds => undef,
 				aj => $expression_label,
 				_label => $end_label,
-				ds => undef,
+				es => undef,
 			;
 			$self->{current_break_label} = $last_break_label;
 		} elsif ($statement->{type} eq 'if_statement') {
@@ -300,13 +299,9 @@ sub parse_bytecode_expression_list {
 
 	my @bytecode;
 	if (@$expression_list > 1) {
-		# push @bytecode, ss => undef;
 		foreach my $i (0 .. $#$expression_list - 1) {
 			push @bytecode, $self->parse_bytecode_expression(single => $expression_list->[$i]);
-			# push @bytecode, ts => $i + 1;
 		}
-		# push @bytecode, ls => @$expression_list - 1;
-		# push @bytecode, ms => undef;
 	}
 	push @bytecode, $self->parse_bytecode_expression(multi => $expression_list->[-1]);
 
@@ -352,7 +347,6 @@ sub parse_bytecode_expression {
 			bn => $expression->{operation},
 	} elsif ($expression->{type} eq 'table_expression') {
 		my @code = (
-			ss => undef,
 			co => undef,
 		);
 		foreach my $field (@{$expression->{table_fields}}) {
@@ -376,9 +370,6 @@ sub parse_bytecode_expression {
 				die "unimplemented field type $field->{type}";
 			}
 		}
-		push @code,
-			ms => undef,
-		;
 		return @code;
 	} elsif ($expression->{type} eq 'function_expression') {
 		my $function_val = {

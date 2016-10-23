@@ -124,9 +124,9 @@ sub execute_bytecode_chunk {
 		my $op = $bytecode->[$i++];
 		my $arg = $bytecode->[$i++];
 
-		# warn "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack; # DEBUG RUNTIME
-		# # warn "\t", $self->dump_stack( \@stack );
-		# warn "$op => ", $arg // ''; # DEBUG RUNTIME
+		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack; # DEBUG RUNTIME
+		# # say "\t", $self->dump_stack( \@stack );
+		# say "$op => ", $arg // ''; # DEBUG RUNTIME
 
 		if ($op eq 'ps') {
 			push @stack, $arg;
@@ -143,6 +143,8 @@ sub execute_bytecode_chunk {
 			@stack = map $_ // $lua_nil_constant, @stack[0 .. ($arg - 1)];
 		} elsif ($op eq 'ds') {
 			@stack = @{pop @saved_stacks};
+		} elsif ($op eq 'es') {
+			@stack = ();
 		# } elsif ($op eq 'ls') {
 		# 	@stack = (@{pop @saved_stacks}, @stack[0 .. ($arg - 1)]);
 		} elsif ($op eq 'ms') {
@@ -234,15 +236,15 @@ sub execute_bytecode_chunk {
 			push @stack, [ table => { _metatable => undef, _index => 1, } ];
 		} elsif ($op eq 'io') {
 			my $val = pop @stack;
-			$stack[0][1]{"string_$arg"} = $val;
+			$stack[-1][1]{"string_$arg"} = $val;
 		} elsif ($op eq 'eo') {
 			my $val = pop @stack;
 			my $key = pop @stack;
 			return error => "table key is nil" if $val == $lua_nil_constant;
-			$stack[0][1]{"$key->[0]_$key->[1]"} = $val;
+			$stack[-1][1]{"$key->[0]_$key->[1]"} = $val;
 		} elsif ($op eq 'ao') {
 			my $val = pop @stack;
-			$stack[0][1]{"number_" . $stack[0][1]{_index}++} = $val;
+			$stack[-1][1]{"number_" . $stack[-1][1]{_index}++} = $val;
 		} elsif ($op eq 'lo') {
 			my $obj = pop @stack;
 			return error => "attempt to access non-object type $obj->[0]" unless $obj->[0] eq 'table';

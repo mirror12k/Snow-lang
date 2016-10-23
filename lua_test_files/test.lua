@@ -2,18 +2,45 @@
 
 
 
-local obj = { val=15, }
-local dupe = { val=17, }
-
-function obj.fun(a)
-	print("this is obj.fun with ", a)
-end
-function obj:sudo(a)
-	print("this is obj:sudo with ", self.val, a)
+function f (...)
+	local a,b = ...
+	print(a,b)
 end
 
+function g (...)
+	local a,b = ..., 'lol'
+	print(a,b)
+end
 
-obj.fun('astro')
-obj:sudo('magic')
-obj.sudo(dupe, 'dupe')
+function h (a, ...)
+	g(...)
+end
 
+h(5)
+
+
+
+
+function ret ()
+	return 'asdf','qwer'
+end
+
+local a,b,c = ret()
+print(a,b,c)
+local a,b,c = ret(), true
+print(a,b,c)
+local a,b,c = false, ret()
+print(a,b,c)
+
+
+
+function ret ()
+	return 'asdf','qwer'
+end
+
+local a,b,c = ret()
+print(a,b,c)
+local a,b,c = ret(), true
+print(a,b,c)
+local a,b,c = false, ret()
+print(a,b,c)

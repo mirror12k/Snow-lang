@@ -63,13 +63,14 @@ sub parse_bytecode_chunk_record {
 	}
 
 	my @block = $self->parse_bytecode_block($chunk->{chunk});
-	# say "dump bytecode labels:\n", $self->dump_bytecode(\@block); # DEBUG BYTECODE
+	# warn "dump bytecode labels:\n", $self->dump_bytecode(\@block); # DEBUG BYTECODE
 	my @bytecode = $self->resolve_bytecode_labels(@block);
 	unshift @bytecode, ts => 0 if defined $args_list;
 	unshift @bytecode, sv => scalar @$args_list if $self->{is_vararg_chunk};
 	unshift @bytecode, yl => 0 if defined $args_list and @$args_list > 0;
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
-	# say "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # DEBUG BYTECODE
+	# warn "opcode count $#bytecode"; # DEBUG BYTECODE
+	# warn "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # DEBUG BYTECODE
 
 	return [ @bytecode ]
 }
@@ -122,7 +123,7 @@ sub parse_bytecode_block {
 		} elsif ($statement->{type} eq 'call_statement') {
 			push @bytecode,
 				ss => undef,
-				$self->parse_bytecode_expression($statement->{expression}),
+				$self->parse_bytecode_expression(multi => $statement->{expression}),
 				ds => undef,
 		} elsif ($statement->{type} eq 'until_statement') {
 			# TODO support local variable application in the expression part (WHY lua???)
@@ -133,7 +134,7 @@ sub parse_bytecode_block {
 			push @bytecode,
 				_label => $repeat_label,
 				$self->parse_bytecode_block($statement->{block}),
-				$self->parse_bytecode_expression($statement->{expression}),
+				$self->parse_bytecode_expression(single => $statement->{expression}),
 				bt => undef,
 				fj => $repeat_label,
 				_label => $end_label,
@@ -146,7 +147,7 @@ sub parse_bytecode_block {
 			$self->{current_break_label} = $end_label;
 			push @bytecode,
 				_label => $expression_label,
-				$self->parse_bytecode_expression($statement->{expression}),
+				$self->parse_bytecode_expression(single => $statement->{expression}),
 				bt => undef,
 				fj => $end_label,
 				$self->parse_bytecode_block($statement->{block}),
@@ -163,14 +164,11 @@ sub parse_bytecode_block {
 			$self->{current_break_label} = $end_label;
 			push @bytecode,
 				ss => undef,
-				$self->parse_bytecode_expression($statement->{expression_start}),
-				ts => 1,
+				$self->parse_bytecode_expression(single => $statement->{expression_start}),
 				# TODO: cast number on these values
 				sl => $iter_var,
-				$self->parse_bytecode_expression($statement->{expression_end}),
-				ts => 1,
-				$self->parse_bytecode_expression($statement->{expression_step}),
-				ts => 2,
+				$self->parse_bytecode_expression(single => $statement->{expression_end}),
+				$self->parse_bytecode_expression(single => $statement->{expression_step}),
 				_label => $expression_label,
 				fr => $iter_var,
 				fj => $end_label,
@@ -213,7 +211,7 @@ sub parse_bytecode_block {
 		} elsif ($statement->{type} eq 'if_statement') {
 			my $branch_label = "branch_" . $self->{current_jump_index}++;
 			push @bytecode,
-				$self->parse_bytecode_expression($statement->{expression}),
+				$self->parse_bytecode_expression(single => $statement->{expression}),
 				bt => undef,
 				fj => $branch_label,
 				$self->parse_bytecode_block($statement->{block}),
@@ -227,7 +225,7 @@ sub parse_bytecode_block {
 					push @bytecode, _label => $branch_label;
 					$branch_label = "branch_" . $self->{current_jump_index}++;
 					push @bytecode, 
-						$self->parse_bytecode_expression($branch_statement->{expression}),
+						$self->parse_bytecode_expression(single => $branch_statement->{expression}),
 						bt => undef,
 						fj => $branch_label,
 						if $branch_statement->{type} eq 'elseif_statement';
@@ -295,22 +293,22 @@ sub parse_bytecode_expression_list {
 
 	my @bytecode;
 	if (@$expression_list > 1) {
-		push @bytecode, ss => undef;
+		# push @bytecode, ss => undef;
 		foreach my $i (0 .. $#$expression_list - 1) {
-			push @bytecode, $self->parse_bytecode_expression($expression_list->[$i]);
-			push @bytecode, ts => $i + 1;
+			push @bytecode, $self->parse_bytecode_expression(single => $expression_list->[$i]);
+			# push @bytecode, ts => $i + 1;
 		}
 		# push @bytecode, ls => @$expression_list - 1;
-		push @bytecode, ms => undef;
+		# push @bytecode, ms => undef;
 	}
-	push @bytecode, $self->parse_bytecode_expression($expression_list->[-1]);
+	push @bytecode, $self->parse_bytecode_expression(multi => $expression_list->[-1]);
 
 	return @bytecode
 }
 
 
 sub parse_bytecode_expression {
-	my ($self, $expression) = @_;
+	my ($self, $stack_mode, $expression) = @_;
 
 	if ($expression->{type} eq 'nil_constant') {
 		return ps => $lua_nil_constant
@@ -321,36 +319,30 @@ sub parse_bytecode_expression {
 	} elsif ($expression->{type} eq 'string_constant') {
 		return ps => [ string => $expression->{value} ]
 	} elsif ($expression->{type} eq 'parenthesis_expression') {
-		return $self->parse_bytecode_expression($expression->{expression})
+		return $self->parse_bytecode_expression(single => $expression->{expression})
 	} elsif ($expression->{type} eq 'vararg_expression') {
 		die "vararg expression used in non-vararg function" unless $self->{is_vararg_chunk};
+		return dv => undef if $stack_mode eq 'single';
 		return lv => undef
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return $self->parse_bytecode_identifier($expression->{identifier})
 	} elsif ($expression->{type} eq 'access_expression') {
-		return $self->parse_bytecode_expression($expression->{expression}),
+		return $self->parse_bytecode_expression(single => $expression->{expression}),
 			lo => $expression->{identifier}
 	} elsif ($expression->{type} eq 'expressive_access_expression') {
 		return
-			$self->parse_bytecode_expression($expression->{expression}),
-			$self->parse_bytecode_expression($expression->{access_expression}),
+			$self->parse_bytecode_expression(single => $expression->{expression}),
+			$self->parse_bytecode_expression(single => $expression->{access_expression}),
 			mo => $expression->{identifier},
 	} elsif ($expression->{type} eq 'unary_expression') {
 		return
-			ss => undef,
-			$self->parse_bytecode_expression($expression->{expression}),
-			ts => 1,
+			$self->parse_bytecode_expression(single => $expression->{expression}),
 			un => $expression->{operation},
-			ms => undef,
 	} elsif ($expression->{type} eq 'binary_expression') {
 		return
-			ss => undef,
-			$self->parse_bytecode_expression($expression->{expression_left}),
-			ts => 1,
-			$self->parse_bytecode_expression($expression->{expression_right}),
-			ts => 2,
+			$self->parse_bytecode_expression(single => $expression->{expression_left}),
+			$self->parse_bytecode_expression(single => $expression->{expression_right}),
 			bn => $expression->{operation},
-			ms => undef,
 	} elsif ($expression->{type} eq 'table_expression') {
 		my @code = (
 			ss => undef,
@@ -359,22 +351,18 @@ sub parse_bytecode_expression {
 		foreach my $field (@{$expression->{table_fields}}) {
 			if ($field->{type} eq 'expressive_field') {
 				push @code,
-					$self->parse_bytecode_expression($field->{key_expression}),
-					ts => 2,
-					$self->parse_bytecode_expression($field->{expression}),
-					ts => 3,
+					$self->parse_bytecode_expression(single => $field->{key_expression}),
+					$self->parse_bytecode_expression(single => $field->{expression}),
 					eo => undef,
 				;
 			} elsif ($field->{type} eq 'identifier_field') {
 				push @code,
-					$self->parse_bytecode_expression($field->{expression}),
-					ts => 2,
+					$self->parse_bytecode_expression(single => $field->{expression}),
 					io => $field->{identifier},
 				;
 			} elsif ($field->{type} eq 'array_field') {
 				push @code,
-					$self->parse_bytecode_expression($field->{expression}),
-					ts => 2,
+					$self->parse_bytecode_expression(single => $field->{expression}),
 					ao => undef,
 				;
 			} else {
@@ -401,21 +389,19 @@ sub parse_bytecode_expression {
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		return
 			ss => undef,
-			$self->parse_bytecode_expression($expression->{expression}),
-			ts => 1,
+			$self->parse_bytecode_expression(single => $expression->{expression}),
 			$self->parse_bytecode_expression_list($expression->{args_list}),
-			cf => undef,
+			($stack_mode eq 'single' ? 'df' : 'cf' ) => undef,
 			ms => undef,
 	} elsif ($expression->{type} eq 'method_call_expression') {
 		return
 			ss => undef,
-			$self->parse_bytecode_expression($expression->{expression}),
-			ts => 1,
+			$self->parse_bytecode_expression(single => $expression->{expression}),
 			bs => undef,
 			lo => $expression->{identifier},
 			rs => undef,
 			$self->parse_bytecode_expression_list($expression->{args_list}),
-			cf => undef,
+			($stack_mode eq 'single' ? 'df' : 'cf' ) => undef,
 			ms => undef,
 	} else {
 		die "unimplemented expression type $expression->{type}";
@@ -429,12 +415,12 @@ sub parse_bytecode_lvalue_expression {
 		return $self->parse_bytecode_lvalue_identifier($expression->{identifier})
 	} elsif ($expression->{type} eq 'access_expression') {
 		return
-			$self->parse_bytecode_expression($expression->{expression}),
+			$self->parse_bytecode_expression(single => $expression->{expression}),
 			so => $expression->{identifier},
 	} elsif ($expression->{type} eq 'expressive_access_expression') {
 		return
-			$self->parse_bytecode_expression($expression->{expression}),
-			$self->parse_bytecode_expression($expression->{access_expression}),
+			$self->parse_bytecode_expression(single => $expression->{expression}),
+			$self->parse_bytecode_expression(single => $expression->{access_expression}),
 			vo => $expression->{identifier},
 	} else {
 		die "unimplemented expression type $expression->{type}";

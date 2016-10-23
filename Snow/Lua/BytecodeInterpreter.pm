@@ -184,7 +184,7 @@ sub execute_bytecode_chunk {
 			$i += $arg if (pop @stack)->[1] == 1;
 		} elsif ($op eq 'aj') {
 			$i += $arg;
-		} elsif ($op eq 'cf' or $op eq 'df') {
+		} elsif ($op eq 'cf') {
 			my $function = shift @stack;
 			# say "calling function $function->[0] : $function->[1]"; # DEBUG RUNTIME
 			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
@@ -196,8 +196,8 @@ sub execute_bytecode_chunk {
 			}
 			# say "functon returned $status => @data"; #DEBUG RUNTIME
 			return $status, @data if $status ne 'return';
-			@stack = @data if $op eq 'cf';
-			@stack = ($data[0] // $lua_nil_constant) if $op eq 'df';
+			@stack = @data;
+			@stack = map $_ // $lua_nil_constant, @stack[0 .. ($arg - 1)] if defined $arg;
 		} elsif ($op eq 'pf') {
 			# say "closure_list ", Dumper $arg->[1]{closure_list};
 			my $closures = [ map { /^c(\d+)$/ ? $local_closures[$1] : \($locals[$_]) } @{$arg->[1]{closure_list}} ];

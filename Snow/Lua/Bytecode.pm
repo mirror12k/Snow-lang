@@ -176,7 +176,7 @@ sub parse_bytecode_block {
 				fj => $end_label,
 				ss => undef,
 				$self->parse_bytecode_block($statement->{block}),
-				ds => undef,
+				ms => undef,
 				bs => undef,
 				ll => $iter_var,
 				bn => '+',
@@ -199,8 +199,7 @@ sub parse_bytecode_block {
 				_label => $expression_label,
 				cs => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
-				cf => undef,
-				ts => scalar @{$statement->{names_list}},
+				cf => scalar @{$statement->{names_list}},
 				yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 				ds => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
@@ -208,7 +207,7 @@ sub parse_bytecode_block {
 				fj => $end_label,
 				ss => undef,
 				$self->parse_bytecode_block($statement->{block}),
-				ds => undef,
+				ms => undef,
 				aj => $expression_label,
 				_label => $end_label,
 				es => undef,
@@ -389,7 +388,7 @@ sub parse_bytecode_expression {
 			ss => undef,
 			$self->parse_bytecode_expression(single => $expression->{expression}),
 			$self->parse_bytecode_expression_list($expression->{args_list}),
-			($stack_mode eq 'single' ? 'df' : 'cf' ) => undef,
+			cf => ($stack_mode eq 'single' ? 1 : undef ),
 			ms => undef,
 	} elsif ($expression->{type} eq 'method_call_expression') {
 		return
@@ -399,7 +398,7 @@ sub parse_bytecode_expression {
 			lo => $expression->{identifier},
 			rs => undef,
 			$self->parse_bytecode_expression_list($expression->{args_list}),
-			($stack_mode eq 'single' ? 'df' : 'cf' ) => undef,
+			cf => ($stack_mode eq 'single' ? 1 : undef ),
 			ms => undef,
 	} else {
 		die "unimplemented expression type $expression->{type}";

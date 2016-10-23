@@ -110,27 +110,35 @@ sub execute {
 sub execute_bytecode_chunk {
 	my ($self, $bytecode_chunk) = @_;
 
-	# data persistent across chunks
+	# data persistent across frames
 	my @call_frames;
 	my @saved_stacks;
 	my @stack;
 
 	INIT_FRAME:
 
-	# data localized to a single stack chunk
-	my $local_closures = $bytecode_chunk->{closures} if defined $bytecode_chunk->{closures};
-	my $vararg;
+	# data localized to a single stack frame
+	my $vararg = [];
 	my $locals = [];
-
-	my $bytecode = $bytecode_chunk->{chunk};
 	my $i = 0;
+
+	push @call_frames, [ $bytecode_chunk, $locals, $vararg, $i ];
 	
-	RUN_BYTECODE: while ($i < @$bytecode) {
+	RUN_BYTECODE_CHUNK:
+
+
+
+	# this localized data is easier to load here than earlier
+	my $local_closures = $bytecode_chunk->{closures};
+	my $bytecode = $bytecode_chunk->{chunk};
+
+	# warn "running chunk:\n", $self->dump_bytecode($bytecode); # DEBUG RUNTIME
+
+	while ($i < @$bytecode) {
 		my $op = $bytecode->[$i++];
 		my $arg = $bytecode->[$i++];
 
 		# say "\t", join ', ', map '{' . $self->dump_stack( $_ ) . '}', @saved_stacks, \@stack; # DEBUG RUNTIME
-		# # say "\t", $self->dump_stack( \@stack );
 		# say "$op => ", $arg // ''; # DEBUG RUNTIME
 
 		if ($op eq 'ps') {
@@ -177,7 +185,7 @@ sub execute_bytecode_chunk {
 			${$local_closures->[$arg]} = pop @stack // $lua_nil_constant;
 
 		} elsif ($op eq 'sv') {
-			$vararg = [ @stack[$arg .. $#stack] ];
+			@$vararg = @stack[$arg .. $#stack];
 		} elsif ($op eq 'lv') {
 			push @stack, @$vararg;
 		} elsif ($op eq 'dv') {
@@ -200,8 +208,7 @@ sub execute_bytecode_chunk {
 				return $status, @data if $status ne 'return';
 				@stack = @data;
 			} else {
-				push @call_frames, { locals => $locals, vararg => $vararg, local_closures => $local_closures,
-						bytecode_chunk => $bytecode_chunk, bytecode => $bytecode, offset => $i };
+				$call_frames[-1][-1] = $i;
 				$bytecode_chunk = $function->[1];
 				goto INIT_FRAME;
 				# ($status, @data) = $self->execute_bytecode_chunk($function->[1], @stack);
@@ -394,11 +401,12 @@ sub execute_bytecode_chunk {
 	}
 
 	EXIT_FRAME:
-	return return => unless @call_frames;
+	# say "debug exit frame"; # DEBUG RUNTIME
+	pop @call_frames;
+	return return => @stack unless @call_frames;
 
-	my $frame = pop @call_frames;
-	($locals, $vararg, $local_closures, $bytecode_chunk, $bytecode, $i) = @$frame{qw/ locals vararg local_closures bytecode_chunk bytecode offset /};
-	goto RUN_BYTECODE
+	($bytecode_chunk, $locals, $vararg, $i) = @{$call_frames[-1]};
+	goto RUN_BYTECODE_CHUNK
 }
 
 

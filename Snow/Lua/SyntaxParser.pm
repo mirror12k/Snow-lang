@@ -34,8 +34,10 @@ sub parse_syntax_block {
 	my ($self) = @_;
 
 	my @block;
+	my $line_number = $self->current_line_number;
 	while (my @statements = $self->parse_syntax_statements) {
-		push @block, @statements;
+		push @block, map { $_->{line_number} = $line_number; $_ } @statements;
+		$line_number = $self->current_line_number;
 	}
 	my $statement = $self->parse_syntax_return_statement;
 	push @block, $statement if defined $statement;

@@ -160,6 +160,12 @@ sub peek_token {
 	return $self->{code_tokens}[$self->{code_tokens_index}]
 }
 
+sub current_line_number {
+	my ($self) = @_;
+	return undef unless $self->more_tokens;
+	return $self->{code_tokens}[$self->{code_tokens_index}][2]
+}
+
 sub next_token {
 	my ($self) = @_;
 	return undef unless $self->more_tokens;

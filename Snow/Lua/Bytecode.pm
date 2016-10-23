@@ -27,12 +27,12 @@ sub parse {
 	my ($self, $text) = @_;
 	$self->SUPER::parse($text);
 
-	$self->{bytecode_chunk} = { chunk => $self->{syntax_tree}, closure_list => [], closure_map => {} };
+	$self->{bytecode_chunk} = { chunk => $self->{syntax_tree}, closure_list => [], closure_map => {}, sourcefile => $self->{filepath} };
 	$self->{bytecode_chunk_queue} = [ $self->{bytecode_chunk} ];
 
 	while (@{$self->{bytecode_chunk_queue}}) {
 		my $chunk_record = shift @{$self->{bytecode_chunk_queue}};
-		$chunk_record->{chunk} = $self->parse_bytecode_chunk_record($chunk_record);
+		$self->parse_bytecode_chunk_record($chunk_record);
 	}
 	return $self->{bytecode_chunk}
 }
@@ -49,6 +49,7 @@ sub parse_bytecode_chunk_record {
 	$self->{local_label_stack} = [];
 	$self->{current_local_labels} = undef;
 	$self->{current_break_label} = undef;
+	$self->{line_number_table} = [];
 
 	$self->{current_jump_index} = 0;
 
@@ -76,8 +77,10 @@ sub parse_bytecode_chunk_record {
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
 	# warn "opcode count $#bytecode"; # DEBUG BYTECODE
 	# warn "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # DEBUG BYTECODE
+	# warn "line numbers:\n", Dumper $self->{line_number_table}; # DEBUG BYTECODE
 
-	return [ @bytecode ]
+	$chunk->{line_number_table} = $self->{line_number_table};
+	$chunk->{chunk} = [ @bytecode ];
 }
 
 sub parse_bytecode_block {
@@ -98,6 +101,8 @@ sub parse_bytecode_block {
 
 	my @bytecode;
 	foreach my $statement (@$block) {
+		push @bytecode, _line_number => $statement->{line_number};
+
 		if ($statement->{type} eq 'empty_statement') {
 			# nothing
 		} elsif ($statement->{type} eq 'label_statement') {
@@ -271,6 +276,9 @@ sub resolve_bytecode_labels {
 
 		if ($op eq '_label') {
 			$labels{$arg} = scalar @bytecode;
+		} elsif ($op eq '_line_number') {
+			push @{$self->{line_number_table}}, scalar (@bytecode) => $arg
+				unless @{$self->{line_number_table}} and $self->{line_number_table}[-2] == scalar (@bytecode);
 		} else {
 			push @bytecode, $op => $arg;
 		}
@@ -379,6 +387,7 @@ sub parse_bytecode_expression {
 			closure_map => {},
 			variable_context => $self->compile_variable_context,
 			parent_chunk => $self->{current_chunk},
+			sourcefile => $self->{current_chunk}{sourcefile},
 		};
 		push @{$self->{bytecode_chunk_queue}}, $function_val;
 		return

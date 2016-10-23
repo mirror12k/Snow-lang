@@ -101,7 +101,7 @@ sub execute {
 	my ($status, @data) = $self->execute_bytecode_chunk($bytecode_chunk);
 
 	if ($status eq 'error') {
-		warn "lua runtime error: @data";
+		warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n";
 	}
 }
 
@@ -200,15 +200,15 @@ sub execute_bytecode_chunk {
 		} elsif ($op eq 'cf') {
 			my $function = shift @stack;
 			# say "calling function $function->[0] : $function->[1]"; # DEBUG RUNTIME
-			return error => "attempt to call value type $function->[0]" if $function->[0] ne 'function';
-			my ($status, @data);
+			$call_frames[-1][-1] = $i;
+			return error => "attempt to call value type $function->[0]", $self->generate_lua_error_trace(\@call_frames) if $function->[0] ne 'function';
+
 			if ($function->[1]{is_native}) {
-				($status, @data) = $function->[1]{function}->($self, @stack);
+				my ($status, @data) = $function->[1]{function}->($self, @stack);
 				# say "functon returned $status => @data"; #DEBUG RUNTIME
 				return $status, @data if $status ne 'return';
 				@stack = @data;
 			} else {
-				$call_frames[-1][-1] = $i;
 				$bytecode_chunk = $function->[1];
 				goto INIT_FRAME;
 				# ($status, @data) = $self->execute_bytecode_chunk($function->[1], @stack);
@@ -218,7 +218,12 @@ sub execute_bytecode_chunk {
 			# say "closure_list ", Dumper $arg->[1]{closure_list};
 			my $closures = [ map { /^c(\d+)$/ ? $local_closures->[$1] : \($locals->[$_]) } @{$arg->[1]{closure_list}} ];
 			# say "closures: ", Dumper $closures;
-			push @stack, [ function => { chunk => $arg->[1]{chunk}, closures => $closures } ];
+			push @stack, [ function => {
+				chunk => $arg->[1]{chunk},
+				sourcefile => $arg->[1]{sourcefile},
+				line_number_table => $arg->[1]{line_number_table},
+				closures => $closures,
+			} ];
 		} elsif ($op eq 'lf') {
 			goto EXIT_FRAME;
 			# return return => @stack
@@ -458,6 +463,29 @@ sub to_string {
 	} else {
 		die "what $val->[0]";
 	}
+}
+
+sub generate_lua_error_trace {
+	my ($self, $call_frames) = @_;
+
+	my @trace = ("stack traceback:");
+	foreach my $frame (reverse @$call_frames) {
+		push @trace, "\t$frame->[0]{sourcefile}:" . $self->get_line_number_from_offset($frame->[0], $frame->[-1] - 2);
+	}
+	return @trace;
+}
+
+sub get_line_number_from_offset {
+	my ($self, $chunk, $offset) = @_;
+	my @line_number_table = @{$chunk->{line_number_table}};
+	my $best = undef;
+	while (@line_number_table) {
+		my $i = shift @line_number_table;
+		my $line_number = shift @line_number_table;
+		last if $i > $offset;
+		$best = $line_number;
+	}
+	return $best;
 }
 
 

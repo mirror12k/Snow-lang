@@ -14,10 +14,10 @@ end)()
 
 ;(function ()
 	a = 4
+	error("debug")
 end)()
 
 print(a)
-
 
 
 

@@ -65,9 +65,14 @@ sub parse_bytecode_chunk_record {
 	my @block = $self->parse_bytecode_block($chunk->{chunk});
 	# warn "dump bytecode labels:\n", $self->dump_bytecode(\@block); # DEBUG BYTECODE
 	my @bytecode = $self->resolve_bytecode_labels(@block);
-	unshift @bytecode, ts => 0 if defined $args_list;
+	unshift @bytecode, ts => 0;
+	if (defined $args_list and @$args_list > 0) {
+		unshift @bytecode, 
+			ts => scalar @$args_list,
+			yl => 0,
+		;
+	}
 	unshift @bytecode, sv => scalar @$args_list if $self->{is_vararg_chunk};
-	unshift @bytecode, yl => 0 if defined $args_list and @$args_list > 0;
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
 	# warn "opcode count $#bytecode"; # DEBUG BYTECODE
 	# warn "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # DEBUG BYTECODE
@@ -110,6 +115,7 @@ sub parse_bytecode_block {
 				push @bytecode,
 					ss => undef,
 					$self->parse_bytecode_expression_list($statement->{expression_list}),
+					ts => scalar @{$statement->{names_list}},
 					yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 					ds => undef,
 			}
@@ -197,6 +203,7 @@ sub parse_bytecode_block {
 				cs => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
 				cf => undef,
+				ts => scalar @{$statement->{names_list}},
 				yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 				ds => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},

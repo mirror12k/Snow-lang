@@ -1,46 +1,18 @@
 
-
-
-
-function f (...)
-	local a,b = ...
+-- bug where yl bytecode was loading more locals due to the stack being larger
+-- fixed by truncating the stack before assigning
+function fun(...)
+	local a = ...
+	local b
 	print(a,b)
 end
 
-function g (...)
-	local a,b = ..., 'lol'
+function foo(a)
+	local b
 	print(a,b)
 end
 
-function h (a, ...)
-	g(...)
-end
+-- so this would overflow into local b, which should be nil instead
+fun(5,4)
+foo(5,4)
 
-h(5)
-
-
-
-
-function ret ()
-	return 'asdf','qwer'
-end
-
-local a,b,c = ret()
-print(a,b,c)
-local a,b,c = ret(), true
-print(a,b,c)
-local a,b,c = false, ret()
-print(a,b,c)
-
-
-
-function ret ()
-	return 'asdf','qwer'
-end
-
-local a,b,c = ret()
-print(a,b,c)
-local a,b,c = ret(), true
-print(a,b,c)
-local a,b,c = false, ret()
-print(a,b,c)

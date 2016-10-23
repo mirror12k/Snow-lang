@@ -107,6 +107,11 @@ sub load_libraries {
 				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
 				return resume => $th
 			},
+			string_status => lua_native_function {
+				my ($self, $th) = @_;
+				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
+				return return => [ string => $th->[1]{status} ]
+			},
 	} ];
 }
 
@@ -128,12 +133,15 @@ sub execute {
 			$current_coroutine->[1]{saved_stacks} = shift @data;
 			$current_coroutine->[1]{stack} = shift @data;
 			push @coroutine_stack, $current_coroutine;
+			$current_coroutine->[1]{status} = 'normal';
 			$current_coroutine = $new_coroutine;
 
 		} elsif ($status eq 'error') {
-			warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n";
+			warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n" unless @coroutine_stack;
+			$current_coroutine->[1]{status} = 'dead';
 			$current_coroutine = pop @coroutine_stack;
-		} else {
+		} elsif ($status eq 'return') {
+			$current_coroutine->[1]{status} = 'dead';
 			$current_coroutine = pop @coroutine_stack;
 		}
 	}

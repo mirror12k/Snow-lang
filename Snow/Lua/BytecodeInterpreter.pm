@@ -243,7 +243,7 @@ sub execute_bytecode_chunk {
 		} elsif ($op eq 'lo') {
 			my $obj = pop @stack;
 			return error => "attempt to access non-object type $obj->[0]" unless $obj->[0] eq 'table';
-			push @stack, $obj->[1]{"string_$arg"} // $lua_nil_constant;
+			push @stack, exists $obj->[1]{"string_$arg"} ? $obj->[1]{"string_$arg"} : $lua_nil_constant;
 		} elsif ($op eq 'so') {
 			my $obj = pop @stack;
 			my $val = pop @stack;
@@ -255,6 +255,11 @@ sub execute_bytecode_chunk {
 			my $val = pop @stack;
 			return error => "attempt to store in non-object type $obj->[0]" unless $obj->[0] eq 'table';
 			$obj->[1]{"$key->[0]_$key->[1]"} = $val;
+		} elsif ($op eq 'mo') {
+			my $key = pop @stack;
+			my $obj = pop @stack;
+			return error => "attempt to access in non-object type $obj->[0]" unless $obj->[0] eq 'table';
+			push @stack, exists $obj->[1]{"$key->[0]_$key->[1]"} ? $obj->[1]{"$key->[0]_$key->[1]"} : $lua_nil_constant;
 
 
 		} elsif ($op eq 'bn') {

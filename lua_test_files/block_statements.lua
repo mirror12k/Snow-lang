@@ -70,3 +70,17 @@ for i = 0, -35, -10 do
 	print('my i5:', i)
 end
 
+
+
+for i, v in ipairs({'a','b','c'}) do
+	print('test1', i, v)
+end
+
+for i, v in ipairs({}) do
+	print('test2', i, v)
+end
+
+for i, v in ipairs({4,5, a=6, b=7}) do
+	print('test3', i, v)
+end
+

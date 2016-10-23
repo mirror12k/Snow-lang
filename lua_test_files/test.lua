@@ -14,10 +14,12 @@ end)()
 
 ;(function ()
 	a = 4
-	error("debug")
 end)()
 
 print(a)
+
+local thread, is_main = coroutine.running()
+print(type(thread), is_main)
 
 
 

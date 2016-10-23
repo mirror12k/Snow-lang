@@ -90,21 +90,39 @@ sub load_libraries {
 		say Dumper \@args;
 		return return =>
 	};
+
+	$self->{global_scope}{coroutine} = [ table => {
+			_metatable => undef,
+			string_running => lua_native_function {
+				my ($self, @args) = @_;
+				return return => $self->{running_coroutine}, [ boolean => $self->{running_coroutine}[1]{is_main} ]
+			},
+	} ];
 }
 
 
 
 sub execute {
-	my ($self, $bytecode_chunk) = @_;
-	$bytecode_chunk = $bytecode_chunk // $self->{bytecode_chunk};
+	my ($self) = @_;
 
-	my ($status, @data) = $self->execute_bytecode_chunk($bytecode_chunk);
+	$self->{main_coroutine} = $self->create_coroutine($self->{bytecode_chunk}, 1);
 
+	my ($status, @data) = $self->run_coroutine($self->{main_coroutine});
 	if ($status eq 'error') {
 		warn "lua: $data[0]\n", join ("\n", @data[1 .. $#data]), "\n";
 	}
 }
 
+sub create_coroutine {
+	my ($self, $bytecode_chunk, $is_main) = @_;
+	return [ thread => { chunk => $bytecode_chunk, is_main => $is_main } ]
+}
+
+sub run_coroutine {
+	my ($self, $coroutine) = @_;
+	$self->{running_coroutine} = $coroutine;
+	return $self->execute_bytecode_chunk($coroutine->[1]{chunk})
+}
 
 
 sub execute_bytecode_chunk {
@@ -460,6 +478,8 @@ sub to_string {
 		return [ string => "$val->[1]" =~ s/^HASH\((.*)\)$/table: $1/r ];
 	} elsif ($val->[0] eq 'function') {
 		return [ string => "$val->[1]" =~ s/^HASH\((.*)\)$/function: $1/r ];
+	} elsif ($val->[0] eq 'thread') {
+		return [ string => "$val->[1]" =~ s/^HASH\((.*)\)$/thread: $1/r ];
 	} else {
 		die "what $val->[0]";
 	}

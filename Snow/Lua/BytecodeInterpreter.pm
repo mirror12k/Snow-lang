@@ -36,21 +36,32 @@ sub initialize_runtime {
 
 }
 
+
+# helper to create native functions
+sub lua_native_function (&) {
+	my ($fun) = @_;
+	return [ function => { is_native => 1, function => $fun } ]
+}
+
 sub load_libraries {
 	my ($self) = @_;
 
-	$self->{global_scope}{print} = [ function => { is_native => 1, function => sub {
+	$self->{global_scope}{print} = lua_native_function {
 		my ($self, @args) = @_;
 		say 
-			# "print: ", 
 			join "\t", map to_string($_)->[1], @args;
 		return return =>
-	} } ];
-	$self->{global_scope}{dump} = [ function => { is_native => 1, function => sub {
+	};
+	$self->{global_scope}{type} = lua_native_function {
+		my ($self, @args) = @_;
+		return error => "bad argument #1 to type function (value expected)" unless defined $args[0];
+		return return => [ string => $args[0][0] ]
+	};
+	$self->{global_scope}{dump} = lua_native_function {
 		my ($self, @args) = @_;
 		say Dumper \@args;
 		return return =>
-	} } ];
+	};
 }
 
 
@@ -164,17 +175,17 @@ sub execute_bytecode_chunk {
 
 		} elsif ($op eq 'fr') {
 			if ($stack[-1][1] > 0) {
-				push @stack, [ bool => $locals[$arg][1] <= $stack[-2][1] ];
+				push @stack, [ boolean => $locals[$arg][1] <= $stack[-2][1] ];
 			} else {
-				push @stack, [ bool => $locals[$arg][1] >= $stack[-2][1] ];
+				push @stack, [ boolean => $locals[$arg][1] >= $stack[-2][1] ];
 			}
 
 		} elsif ($op eq 'bt') {
-			push @stack, $self->cast_bool(pop @stack);
+			push @stack, $self->cast_boolean(pop @stack);
 			
 		} elsif ($op eq 'un') {
 			if ($arg eq 'not') {
-				push @stack, [ bool => not $self->cast_bool(pop @stack)->[1] ];
+				push @stack, [ boolean => not $self->cast_boolean(pop @stack)->[1] ];
 			} elsif ($arg eq '#') {
 				... # unary table length
 			} elsif ($arg eq '-') {
@@ -226,41 +237,41 @@ sub execute_bytecode_chunk {
 			} elsif ($arg eq '<') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
-				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] < $val2->[1] ] }
-				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] lt $val2->[1] ] }
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ boolean => $val1->[1] < $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ boolean => $val1->[1] lt $val2->[1] ] }
 				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '>') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
-				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] > $val2->[1] ] }
-				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] gt $val2->[1] ] }
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ boolean => $val1->[1] > $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ boolean => $val1->[1] gt $val2->[1] ] }
 				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '<=') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
-				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] <= $val2->[1] ] }
-				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] le $val2->[1] ] }
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ boolean => $val1->[1] <= $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ boolean => $val1->[1] le $val2->[1] ] }
 				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '>=') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
-				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ bool => $val1->[1] >= $val2->[1] ] }
-				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ bool => $val1->[1] ge $val2->[1] ] }
+				if ($val1->[0] eq 'number' and $val2->[0] eq 'number') { push @stack, [ boolean => $val1->[1] >= $val2->[1] ] }
+				elsif ($val1->[0] eq 'string' and $val2->[0] eq 'string') { push @stack, [ boolean => $val1->[1] ge $val2->[1] ] }
 				else { return error => "attempt to compare $val1->[0] with $val2->[0]" }
 			} elsif ($arg eq '~=') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
-				if ($val1 == $val2) { push @stack, [ bool => 0 ] }
-				elsif ($val1->[0] eq $val2->[0] and $val1->[0] eq 'string') { push @stack, [ bool => $val1->[1] ne $val2->[1] ] }
-				elsif ($val1->[0] eq $val2->[0]) { push @stack, [ bool => $val1->[1] != $val2->[1] ] }
-				else { push @stack, [ bool => 1 ] }
+				if ($val1 == $val2) { push @stack, [ boolean => 0 ] }
+				elsif ($val1->[0] eq $val2->[0] and $val1->[0] eq 'string') { push @stack, [ boolean => $val1->[1] ne $val2->[1] ] }
+				elsif ($val1->[0] eq $val2->[0]) { push @stack, [ boolean => $val1->[1] != $val2->[1] ] }
+				else { push @stack, [ boolean => 1 ] }
 			} elsif ($arg eq '==') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;
-				if ($val1 == $val2) { push @stack, [ bool => 1 ] }
-				elsif ($val1->[0] eq $val2->[0] and $val1->[0] eq 'string') { push @stack, [ bool => $val1->[1] eq $val2->[1] ] }
-				elsif ($val1->[0] eq $val2->[0]) { push @stack, [ bool => $val1->[1] == $val2->[1] ] }
-				else { push @stack, [ bool => 0 ] }
+				if ($val1 == $val2) { push @stack, [ boolean => 1 ] }
+				elsif ($val1->[0] eq $val2->[0] and $val1->[0] eq 'string') { push @stack, [ boolean => $val1->[1] eq $val2->[1] ] }
+				elsif ($val1->[0] eq $val2->[0]) { push @stack, [ boolean => $val1->[1] == $val2->[1] ] }
+				else { push @stack, [ boolean => 0 ] }
 			} elsif ($arg eq '|') {
 				...
 			} elsif ($arg eq '~') {
@@ -340,14 +351,14 @@ sub execute_bytecode_chunk {
 
 
 
-sub cast_bool {
+sub cast_boolean {
 	my ($self, $val) = @_;
 	if ($val == $lua_nil_constant) {
-		return [ bool => 0 ]
-	} elsif ($val->[0] eq 'bool') {
+		return [ boolean => 0 ]
+	} elsif ($val->[0] eq 'boolean') {
 		return $val
 	} else {
-		return [ bool => 1 ]
+		return [ boolean => 1 ]
 	}
 }
 
@@ -375,7 +386,7 @@ sub to_string {
 	my ($val) = @_;
 	if ($val == $lua_nil_constant) {
 		return [ string => 'nil' ];
-	} elsif ($val->[0] eq 'bool') {
+	} elsif ($val->[0] eq 'boolean') {
 		return [ string => $val->[1] ? 'true' : 'false' ];
 	} elsif ($val->[0] eq 'number' or $val->[0] eq 'string') {
 		return [ string => "$val->[1]" ];

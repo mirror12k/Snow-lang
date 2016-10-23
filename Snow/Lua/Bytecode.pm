@@ -315,7 +315,7 @@ sub parse_bytecode_expression {
 	if ($expression->{type} eq 'nil_constant') {
 		return ps => $lua_nil_constant
 	} elsif ($expression->{type} eq 'bool_constant') {
-		return ps => [ bool => $expression->{value} ]
+		return ps => [ boolean => $expression->{value} ]
 	} elsif ($expression->{type} eq 'numeric_constant') {
 		return ps => [ number => $expression->{value} ]
 	} elsif ($expression->{type} eq 'string_constant') {
@@ -462,7 +462,6 @@ sub parse_bytecode_lvalue_identifier {
 	my ($self, $identifier) = @_;
 
 	my ($op, $arg) = $self->parse_bytecode_identifier($identifier);
-
 	return $op =~ s/^l/s/r, $arg
 }
 

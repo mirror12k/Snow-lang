@@ -43,6 +43,19 @@ sub lua_native_function (&) {
 	return [ function => { is_native => 1, function => $fun } ]
 }
 
+# helper to create native tables
+sub lua_hash_table (%) {
+	my ($hash) = @_;
+	my $t = [ table => { metatable => undef, index => 1, fields => [], field_map => {} } ];
+
+	while (my ($k, $v) = each %$hash) {
+		push @{$t->[1]{fields}}, [ [ string => $k ], $v ];
+		$t->[1]{field_map}{"string_$k"} = $#{$t->[1]{fields}};
+	}
+
+	return $t
+}
+
 sub load_libraries {
 	my ($self) = @_;
 
@@ -55,9 +68,8 @@ sub load_libraries {
 	my $ipairs_iterator = lua_native_function {
 		my ($self, $t, $index) = @_;
 		$index = $index->[1] + 1;
-		return return => $lua_nil_constant
-			unless exists $t->[1]{"number_$index"} and defined $t->[1]{"number_$index"} and $t->[1]{"number_$index"} != $lua_nil_constant;
-		return return => [ number => $index ], $t->[1]{"number_$index"}
+		return return => $lua_nil_constant unless exists $t->[1]{field_map}{"number_$index"};
+		return return => [ number => $index ], $t->[1]{fields}[$t->[1]{field_map}{"number_$index"}][1]
 	};
 	$self->{global_scope}{ipairs} = lua_native_function {
 		my ($self, $t) = @_;
@@ -91,32 +103,32 @@ sub load_libraries {
 		return return =>
 	};
 
-	$self->{global_scope}{coroutine} = [ table => {
+	$self->{global_scope}{coroutine} = lua_hash_table {
 			_metatable => undef,
-			string_running => lua_native_function {
+			running => lua_native_function {
 				my ($self, @args) = @_;
 				return return => $self->{running_coroutine}, [ boolean => $self->{running_coroutine}[1]{is_main} ]
 			},
-			string_create => lua_native_function {
+			create => lua_native_function {
 				my ($self, $f) = @_;
 				return error => "bad argument #1 to coroutine.create (function expected)" unless defined $f and $f->[0] eq 'function';
 				return return => $self->create_coroutine($f->[1], 0)
 			},
-			string_resume => lua_native_function {
+			resume => lua_native_function {
 				my ($self, $th, @args) = @_;
 				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
 				return resume => $th
 			},
-			string_yield => lua_native_function {
+			yield => lua_native_function {
 				my ($self, @args) = @_;
 				return yield => @args
 			},
-			string_status => lua_native_function {
+			status => lua_native_function {
 				my ($self, $th) = @_;
 				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
 				return return => [ string => $th->[1]{status} ]
 			},
-	} ];
+	};
 }
 
 
@@ -338,38 +350,56 @@ sub execute_bytecode_chunk {
 			}
 
 		} elsif ($op eq 'co') {
-			push @stack, [ table => { _metatable => undef, _index => 1, } ];
+			push @stack, [ table => { metatable => undef, index => 1, fields => [], field_map => {} } ];
 		} elsif ($op eq 'io') {
 			my $val = pop @stack;
-			$stack[-1][1]{"string_$arg"} = $val;
+			my $t = $stack[-1][1];
+			# $stack[-1][1]{"string_$arg"} = $val;
+			$t->{field_map}{"string_$arg"} = scalar @{$t->{fields}} unless exists $t->{field_map}{"string_$arg"};
+			$t->{fields}[$t->{field_map}{"string_$arg"}] = [ [ string => $arg ], $val ];
+
 		} elsif ($op eq 'eo') {
 			my $val = pop @stack;
 			my $key = pop @stack;
 			return error => "table key is nil" if $val == $lua_nil_constant;
-			$stack[-1][1]{"$key->[0]_$key->[1]"} = $val;
+			my $t = $stack[-1][1];
+			# $stack[-1][1]{"$key->[0]_$key->[1]"} = $val;
+			$t->{field_map}{"$key->[0]_$key->[1]"} = scalar @{$t->{fields}} unless exists $t->{field_map}{"$key->[0]_$key->[1]"};
+			$t->{fields}[$t->{field_map}{"$key->[0]_$key->[1]"}] = [ $key => $val ];
 		} elsif ($op eq 'ao') {
 			my $val = pop @stack;
-			$stack[-1][1]{"number_" . $stack[-1][1]{_index}++} = $val;
+			my $t = $stack[-1][1];
+			# $stack[-1][1]{"number_" . $stack[-1][1]{_index}++} = $val;
+			$t->{field_map}{"number_$t->{index}"} = scalar @{$t->{fields}};
+			push @{$t->{fields}}, [ [ number => $t->{index}++ ], $val];
 		} elsif ($op eq 'lo') {
 			my $obj = pop @stack;
 			return error => "attempt to access non-object type $obj->[0]" unless $obj->[0] eq 'table';
-			push @stack, exists $obj->[1]{"string_$arg"} ? $obj->[1]{"string_$arg"} : $lua_nil_constant;
+			push @stack, exists $obj->[1]{field_map}{"string_$arg"} ? $obj->[1]{fields}[$obj->[1]{field_map}{"string_$arg"}][1] : $lua_nil_constant;
 		} elsif ($op eq 'so') {
 			my $obj = pop @stack;
 			my $val = pop @stack;
 			return error => "attempt to store in non-object type $obj->[0]" unless $obj->[0] eq 'table';
-			$obj->[1]{"string_$arg"} = $val;
+			my $t = $obj->[1];
+			# $obj->[1]{"string_$arg"} = $val;
+			$t->{field_map}{"string_$arg"} = scalar @{$t->{fields}} unless exists $t->{field_map}{"string_$arg"};
+			$t->{fields}[$t->{field_map}{"string_$arg"}] = [ [ string => $arg ], $val ];
 		} elsif ($op eq 'vo') {
 			my $key = pop @stack;
 			my $obj = pop @stack;
 			my $val = pop @stack;
 			return error => "attempt to store in non-object type $obj->[0]" unless $obj->[0] eq 'table';
-			$obj->[1]{"$key->[0]_$key->[1]"} = $val;
+			my $t = $obj->[1];
+			# $obj->[1]{"$key->[0]_$key->[1]"} = $val;
+			$t->{field_map}{"$key->[0]_$key->[1]"} = scalar @{$t->{fields}} unless exists $t->{field_map}{"$key->[0]_$key->[1]"};
+			$t->{fields}[$t->{field_map}{"$key->[0]_$key->[1]"}] = [ $key => $val ];
 		} elsif ($op eq 'mo') {
 			my $key = pop @stack;
 			my $obj = pop @stack;
 			return error => "attempt to access in non-object type $obj->[0]" unless $obj->[0] eq 'table';
-			push @stack, exists $obj->[1]{"$key->[0]_$key->[1]"} ? $obj->[1]{"$key->[0]_$key->[1]"} : $lua_nil_constant;
+			my $t = $obj->[1];
+			# push @stack, exists $obj->[1]{"$key->[0]_$key->[1]"} ? $obj->[1]{"$key->[0]_$key->[1]"} : $lua_nil_constant;
+			push @stack, exists $t->{field_map}{"$key->[0]_$key->[1]"} ? $t->{fields}[$t->{field_map}{"$key->[0]_$key->[1]"}][1] : $lua_nil_constant;
 
 
 		} elsif ($op eq 'bn') {

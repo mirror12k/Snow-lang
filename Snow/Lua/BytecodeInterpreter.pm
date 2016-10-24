@@ -374,9 +374,13 @@ sub execute_bytecode_chunk {
 
 		} elsif ($op eq 'bn') {
 			if ($arg eq 'or') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				push @stack, $self->cast_boolean($val1)->[1] ? $val1 : $val2;
 			} elsif ($arg eq 'and') {
-				...
+				my $val2 = pop @stack;
+				my $val1 = pop @stack;
+				push @stack, $self->cast_boolean($val1)->[1] ? $val2 : $val1;
 			} elsif ($arg eq '<') {
 				my $val2 = pop @stack;
 				my $val1 = pop @stack;

@@ -75,8 +75,8 @@ sub parse_bytecode_chunk_record {
 	}
 	unshift @bytecode, sv => scalar @$args_list if $self->{is_vararg_chunk};
 	unshift @bytecode, xl => $self->{current_local_index} if $self->{current_local_index} > 0;
-	# warn "opcode count $#bytecode"; # DEBUG BYTECODE
 	# warn "dump bytecode:\n", $self->dump_bytecode(\@bytecode); # DEBUG BYTECODE
+	# warn "opcode count $#bytecode"; # DEBUG BYTECODE
 	# warn "line numbers:\n", Dumper $self->{line_number_table}; # DEBUG BYTECODE
 
 	$chunk->{line_number_table} = $self->{line_number_table};

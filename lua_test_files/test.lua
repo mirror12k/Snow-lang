@@ -60,15 +60,25 @@
 
 
 
-for k, v in pairs({'a','b','c'}) do
-	print('pairs1', k, v)
-end
+-- for k, v in pairs({'a','b','c'}) do
+-- 	print('pairs1', k, v)
+-- end
 
 
-for k, v in pairs({}) do
-	print('pairs2', k, v)
-end
+-- for k, v in pairs({}) do
+-- 	print('pairs2', k, v)
+-- end
 
-for k, v in pairs({a = 'asdf'}) do
-	print('pairs3', k, v)
-end
+-- for k, v in pairs({a = 'asdf'}) do
+-- 	print('pairs3', k, v)
+-- end
+
+
+
+-- for i = 0, 100000 do
+	-- for k, v in pairs({ a = 'asdf', b = 'beta', [false] = 'nope!', [5] = '15' }) do
+	-- 	-- print(k, v)
+	-- end
+-- end
+
+

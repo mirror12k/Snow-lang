@@ -77,15 +77,27 @@ sub load_libraries {
 
 		return return => $ipairs_iterator, $t, [ number => 0 ]
 	};
+
+	my ($pairs_cache_table, $pairs_cache_key, $pairs_cache_index) = undef, undef, undef;
 	my $pairs_iterator = lua_native_function {
 		my ($self, $t, $key) = @_;
 		$t = $t->[1];
 		if ($key == $lua_nil_constant) {
 			return return => $lua_nil_constant unless @{$t->{fields}};
+			$pairs_cache_table = $t;
+			$pairs_cache_key = $t->{fields}[0][0];
+			$pairs_cache_index = 1;
 			return return => @{$t->{fields}[0]}
+		} elsif ($t == $pairs_cache_table and $key == $pairs_cache_key) {
+			return return => $lua_nil_constant unless @{$t->{fields}} > $pairs_cache_index;
+			$pairs_cache_key = $t->{fields}[$pairs_cache_index][0];
+			return return => @{$t->{fields}[$pairs_cache_index++]}
 		} else {
 			foreach my $index (0 .. ($#{$t->{fields}} - 1)) {
 				if ($t->{fields}[$index][0] == $key) {
+					$pairs_cache_table = $t;
+					$pairs_cache_key = $t->{fields}[$index + 1][0];
+					$pairs_cache_index = $index + 2;
 					return return => @{$t->{fields}[$index + 1]}
 				}
 			}
@@ -338,6 +350,8 @@ sub execute_bytecode_chunk {
 
 		} elsif ($op eq 'bt') {
 			push @stack, $self->cast_boolean(pop @stack);
+		} elsif ($op eq 'nt') {
+			push @stack, [ boolean => (pop @stack) != $lua_nil_constant ];
 			
 		} elsif ($op eq 'un') {
 			if ($arg eq 'not') {

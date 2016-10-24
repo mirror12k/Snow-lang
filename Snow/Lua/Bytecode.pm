@@ -209,7 +209,7 @@ sub parse_bytecode_block {
 				yl => $self->{current_local_scope}{$statement->{names_list}[0]},
 				ds => undef,
 				ll => $self->{current_local_scope}{$statement->{names_list}[0]},
-				bt => undef,
+				nt => undef,
 				fj => $end_label,
 				ss => undef,
 				$self->parse_bytecode_block($statement->{block}),

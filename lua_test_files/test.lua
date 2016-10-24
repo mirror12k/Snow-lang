@@ -82,3 +82,11 @@
 -- end
 
 
+
+
+break
+
+goto test
+goto LOL
+break;
+

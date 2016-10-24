@@ -77,21 +77,27 @@ sub load_libraries {
 
 		return return => $ipairs_iterator, $t, [ number => 0 ]
 	};
-	# my $pairs_iterator = lua_native_function {
-	# 	my ($self, $t, $index) = @_;
-	# 	my ($k, $v) = each $t->[1];
-	# 	while (defined $k and ($k eq '_metatable' or $k eq '_index')) {
-	# 		($k, $v) = each $t->[1];
-	# 	}
-	# 	return return => $lua_nil_constant unless defined $k;
-	# 	return return => [ string => $k ], $v
-	# };
-	# $self->{global_scope}{pairs} = lua_native_function {
-	# 	my ($self, $t) = @_;
-	# 	return error => "bad argument #1 to type function (table expected)" unless defined $t and $t->[0] eq 'table';
+	my $pairs_iterator = lua_native_function {
+		my ($self, $t, $key) = @_;
+		$t = $t->[1];
+		if ($key == $lua_nil_constant) {
+			return return => $lua_nil_constant unless @{$t->{fields}};
+			return return => @{$t->{fields}[0]}
+		} else {
+			foreach my $index (0 .. ($#{$t->{fields}} - 1)) {
+				if ($t->{fields}[$index][0] == $key) {
+					return return => @{$t->{fields}[$index + 1]}
+				}
+			}
+			return return => $lua_nil_constant
+		}
+	};
+	$self->{global_scope}{pairs} = lua_native_function {
+		my ($self, $t) = @_;
+		return error => "bad argument #1 to type function (table expected)" unless defined $t and $t->[0] eq 'table';
 
-	# 	return return => $pairs_iterator, $t, $lua_nil_constant
-	# };
+		return return => $pairs_iterator, $t, $lua_nil_constant
+	};
 	$self->{global_scope}{type} = lua_native_function {
 		my ($self, $arg) = @_;
 		return error => "bad argument #1 to type (value expected)" unless defined $arg;

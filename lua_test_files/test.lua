@@ -5,6 +5,7 @@
 
 
 
+
 -- print('a' or 'b')
 -- print(nil or 'b')
 -- print(false or 'b')
@@ -29,27 +30,45 @@
 -- dump{10,20,30}
 
 
-local t = {
-	asdf = 'allo',
-	qwer = "qwerty",
-	zxcv = 'zero',
-}
+-- local t = {
+-- 	asdf = 'allo',
+-- 	qwer = "qwerty",
+-- 	zxcv = 'zero',
+-- }
 
-print(t.asdf, t.zxcv, t.null, t.qwer, t.empty)
+-- print(t.asdf, t.zxcv, t.null, t.qwer, t.empty)
 
-t.zxcv = 'zebra'
-t.empty = false
+-- t.zxcv = 'zebra'
+-- t.empty = false
 
-print(t.asdf, t.zxcv, t.null, t.qwer, t.empty)
-print(t['asdf'], t[5], t['qwer'], t.qwer, t.empty)
+-- print(t.asdf, t.zxcv, t.null, t.qwer, t.empty)
+-- print(t['asdf'], t[5], t['qwer'], t.qwer, t.empty)
 
 
-t = {
-	[true] = 5,
-	[{}] = 4,
-	[5] = 3,
-}
+-- t = {
+-- 	[true] = 5,
+-- 	[{}] = 4,
+-- 	[5] = 3,
+-- }
 
-t[4] = false;
+-- t[4] = false;
 
-print(t[true], t[false], t[4], t[{}])
+-- print(t[true], t[false], t[4], t[{}])
+
+
+
+
+
+
+for k, v in pairs({'a','b','c'}) do
+	print('pairs1', k, v)
+end
+
+
+for k, v in pairs({}) do
+	print('pairs2', k, v)
+end
+
+for k, v in pairs({a = 'asdf'}) do
+	print('pairs3', k, v)
+end

@@ -33,3 +33,17 @@ local status = coroutine.resume(coroutine.create(function () return nil + 5 end)
 print(status)
 
 
+
+function stepper()
+	coroutine.yield('step 1')
+	coroutine.yield('step 2')
+	coroutine.yield('step 3')
+end
+
+local co = coroutine.create(stepper)
+print(coroutine.resume(co), coroutine.status(co))
+print(coroutine.resume(co), coroutine.status(co))
+print(coroutine.resume(co), coroutine.status(co))
+print(coroutine.resume(co), coroutine.status(co))
+
+

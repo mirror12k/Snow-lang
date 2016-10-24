@@ -107,6 +107,10 @@ sub load_libraries {
 				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
 				return resume => $th
 			},
+			string_yield => lua_native_function {
+				my ($self, @args) = @_;
+				return yield => @args
+			},
 			string_status => lua_native_function {
 				my ($self, $th) = @_;
 				return error => "bad argument #1 to coroutine.resume (thread expected)" unless defined $th and $th->[0] eq 'thread';
@@ -148,6 +152,15 @@ sub execute {
 			$current_coroutine->[1]{status} = 'dead';
 			$current_coroutine = pop @coroutine_stack;
 			$current_coroutine->[1]{stack} = [ [ boolean => 1 ], @data ] if defined $current_coroutine;
+		} elsif ($status eq 'yield') {
+			my @arg_stack = @{shift @data};
+			$current_coroutine->[1]{call_frames} = shift @data;
+			$current_coroutine->[1]{saved_stacks} = shift @data;
+			$current_coroutine->[1]{stack} = [];
+			$current_coroutine->[1]{status} = 'suspended';
+
+			$current_coroutine = pop @coroutine_stack;
+			$current_coroutine->[1]{stack} = [ [ boolean => 1 ], @arg_stack ] if defined $current_coroutine;
 		}
 	}
 }
@@ -275,6 +288,7 @@ sub execute_bytecode_chunk {
 				my ($status, @data) = $function->[1]{function}->($self, @stack);
 				# say "functon returned $status => @data"; #DEBUG RUNTIME
 				return $status, $data[0], \@stack, \@call_frames, \@saved_stacks if $status eq 'resume';
+				return $status, \@data, \@call_frames, \@saved_stacks if $status eq 'yield';
 				return $status, @data if $status ne 'return';
 				@stack = @data;
 			} else {

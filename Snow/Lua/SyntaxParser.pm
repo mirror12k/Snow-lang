@@ -191,6 +191,11 @@ sub parse_syntax_statements {
 			push @statements, { type => 'variable_declaration_statement', names_list => $names_list, expression_list => $expression_list };
 		}
 
+	} elsif ($self->is_token_val( keyword => 'return' )) {
+		say "error out";
+		push @statements, $self->parse_syntax_return_statement;
+		return @statements
+
 	} elsif ($self->is_token_val( symbol => ';' )) {
 		$self->next_token;
 		push @statements, { type => 'empty_statement' };
@@ -226,6 +231,7 @@ sub parse_syntax_return_statement {
 	
 	return unless $self->is_token_val( keyword => 'return' );
 	$self->next_token;
+	return { type => 'return_statement', expression_list => [] } if not $self->more_tokens or $self->is_token_val( keyword => 'end' );
 	return {
 		type => 'return_statement',
 		expression_list => [ $self->parse_syntax_expression_list ],

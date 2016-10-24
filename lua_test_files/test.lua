@@ -86,6 +86,15 @@
 
 break
 ::exp::
+
+::LOL::
+
+goto test
+goto LOL
+break;
+
+do end
+
 do
 	while 5 do
 		break
@@ -101,12 +110,6 @@ do
 		goto stop
 	else
 	end
-
-	::LOL::
-
-	goto test
-	goto LOL
-	break;
 end
 
 for i = 1,5 do
@@ -125,5 +128,22 @@ for k, v in 5, 4, true, nil do
 	print('hello world!')
 	print('hello world!', 5, nil)
 	print()
+
+	obj:met('lol', a(), (5))
+
+	a = 5
+	b.beta, c.kelvin = true, nil, false
+	d.delta['plane'] = true, nil, false
+
+	print(#t, ~t, t + 5, t - (5 + 4))
+	print(-5, -var, -asdf())
+
 end
+
+
+if true then
+	return
+end
+
+return true, 'end of block'
 

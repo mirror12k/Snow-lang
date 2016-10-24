@@ -80,9 +80,14 @@ sub to_string_statement {
 
 	} elsif ($statement->{type} eq 'variable_declaration_statement') {
 		return "${prefix}local " . join (", ", @{$statement->{names_list}})
-			. ( defined $statement->{expression_list} ? ' = ' . $self->to_string_expression_list($statement->{expression_list}) : '' )
+			. ( defined $statement->{expression_list} ? " = " . $self->to_string_expression_list($statement->{expression_list}) : '' )
+	} elsif ($statement->{type} eq 'assignment_statement') {
+		return "${prefix}" . $self->to_string_expression_list($statement->{var_list})
+			. " = " . $self->to_string_expression_list($statement->{expression_list})
 	} elsif ($statement->{type} eq 'call_statement') {
 		return "${prefix}" . $self->to_string_expression($statement->{expression}) . ";"
+	} elsif ($statement->{type} eq 'return_statement') {
+		return "${prefix}return " . $self->to_string_expression_list($statement->{expression_list})
 	} else {
 		die "unimplemented statement type $statement->{type}";
 	}
@@ -105,10 +110,26 @@ sub to_string_expression {
 		return "'$expression->{value}'"
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return "$expression->{identifier}"
+	} elsif ($expression->{type} eq 'vararg_expression') {
+		return "..."
+	} elsif ($expression->{type} eq 'parenthesis_expression') {
+		return "(" . $self->to_string_expression($expression->{expression}) . ")"
+	} elsif ($expression->{type} eq 'unary_expression') {
+		return "$expression->{operation}" . $self->to_string_expression($expression->{expression})
+	} elsif ($expression->{type} eq 'binary_expression') {
+		return $self->to_string_expression($expression->{expression_left})
+			. " $expression->{operation} " . $self->to_string_expression($expression->{expression_right})
 	} elsif ($expression->{type} eq 'access_expression') {
 		return $self->to_string_expression($expression->{expression}) . ".$expression->{identifier}"
+	} elsif ($expression->{type} eq 'expressive_access_expression') {
+		return $self->to_string_expression($expression->{expression}) . "["
+			. $self->to_string_expression($expression->{access_expression}) . "]"
 	} elsif ($expression->{type} eq 'function_call_expression') {
-		return $self->to_string_expression($expression->{expression}) . "(" . $self->to_string_expression_list($expression->{args_list}) . ")"
+		return $self->to_string_expression($expression->{expression})
+			. "(" . $self->to_string_expression_list($expression->{args_list}) . ")"
+	} elsif ($expression->{type} eq 'method_call_expression') {
+		return $self->to_string_expression($expression->{expression})
+			. ":$expression->{identifier}(" . $self->to_string_expression_list($expression->{args_list}) . ")"
 	} else {
 		die "unimplemented expression type $expression->{type}";
 	}

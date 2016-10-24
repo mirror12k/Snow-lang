@@ -85,8 +85,26 @@
 
 
 break
+::exp::
+do
+	while 5 do
+		break
+	end
+	while 'asdf' do end
+	repeat goto exp until true
 
-goto test
-goto LOL
-break;
+	if true then
+		break
+	elseif false then
+		goto what
+	elseif 5 then
+		goto stop
+	else
+	end
 
+	::LOL::
+
+	goto test
+	goto LOL
+	break;
+end

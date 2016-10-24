@@ -147,3 +147,11 @@ end
 
 return true, 'end of block'
 
+
+print(function ()
+		print("i am a function!")
+		if true then
+			break
+		end
+	end)
+

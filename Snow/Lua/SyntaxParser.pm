@@ -192,7 +192,6 @@ sub parse_syntax_statements {
 		}
 
 	} elsif ($self->is_token_val( keyword => 'return' )) {
-		say "error out";
 		push @statements, $self->parse_syntax_return_statement;
 		return @statements
 

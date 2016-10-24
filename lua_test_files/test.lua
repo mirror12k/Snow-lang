@@ -108,3 +108,22 @@ do
 	goto LOL
 	break;
 end
+
+for i = 1,5 do
+	break
+end
+
+for i = 1,5,10 do
+	break
+	goto br
+end
+
+for k, v in 5, 4, true, nil do
+	local a,b
+	local b, c = 5
+	local d = nil, false, true
+	print('hello world!')
+	print('hello world!', 5, nil)
+	print()
+end
+

@@ -5,7 +5,7 @@ use warnings;
 use feature 'say';
 
 use Carp;
-
+use Data::Dumper;
 
 
 
@@ -100,6 +100,7 @@ sub to_string_expression_list {
 
 sub to_string_expression {
 	my ($self, $prefix, $expression) = @_;
+
 	if ($expression->{type} eq 'nil_constant') {
 		return "nil"
 	} elsif ($expression->{type} eq 'bool_constant') {
@@ -107,7 +108,7 @@ sub to_string_expression {
 	} elsif ($expression->{type} eq 'numeric_constant') {
 		return "$expression->{value}"
 	} elsif ($expression->{type} eq 'string_constant') {
-		return "'$expression->{value}'"
+		return "'" . ( $expression->{value} =~ s/'/\\'/rg) . "'"
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return "$expression->{identifier}"
 	} elsif ($expression->{type} eq 'vararg_expression') {
@@ -123,6 +124,16 @@ sub to_string_expression {
 	} elsif ($expression->{type} eq 'function_expression') {
 		return "function (" . join (", ", @{$expression->{args_list}}) . ")\n"
 			. $self->to_string_block("$prefix\t" => $expression->{block}) . "${prefix}end"
+	} elsif ($expression->{type} eq 'table_expression') {
+		return "{ " . join (", ", map $self->to_string_expression("$prefix" => $_), @{$expression->{table_fields}} ) . " }"
+
+	} elsif ($expression->{type} eq 'array_field') {
+		return $self->to_string_expression("$prefix" => $expression->{expression})
+	} elsif ($expression->{type} eq 'identifier_field') {
+		return "$expression->{identifier} = " . $self->to_string_expression("$prefix" => $expression->{expression})
+	} elsif ($expression->{type} eq 'expressive_field') {
+		return "[" . $self->to_string_expression("$prefix" => $expression->{key_expression})
+			. "] = " . $self->to_string_expression("$prefix" => $expression->{expression})
 
 	} elsif ($expression->{type} eq 'access_expression') {
 		return $self->to_string_expression("$prefix" => $expression->{expression}) . ".$expression->{identifier}"

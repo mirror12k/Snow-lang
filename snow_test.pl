@@ -11,6 +11,7 @@ use Snow::Lua::TokenParser;
 use Snow::Lua::SyntaxParser;
 use Snow::Lua::SyntaxStringer;
 use Snow::TokenParser;
+use Snow::SyntaxParser;
 
 
 
@@ -22,7 +23,11 @@ my $file = shift // die "file required";
 # print $stringer->to_string($parser->{syntax_tree});
 
 
-my $parser = Snow::TokenParser->new(file => $file);
-say $parser->dump;
+# my $parser = Snow::TokenParser->new(file => $file);
+# say $parser->dump;
+
+
+my $parser = Snow::SyntaxParser->new(file => $file);
+say $parser->dump_syntax;
 
 

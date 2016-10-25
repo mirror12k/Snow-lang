@@ -15,7 +15,7 @@ sub new {
 	my ($class, %opts) = @_;
 	my $self = bless {}, $class;
 
-	$self->{ignored_tokens} = [qw/ comments /];
+	$self->{ignored_tokens} = [qw/ comment /];
 
 	if (defined $opts{file}) {
 		$self->parse_file($opts{file});
@@ -39,10 +39,12 @@ sub parse_file {
 our @snow_keywords = qw/
 	local
 	global
+	do
 /;
 
 our @snow_syntax_tokens = (qw#
 	+
+	:
 #, ',');
 
 our $snow_keywords_regex = join '|', @snow_keywords;
@@ -102,6 +104,8 @@ sub parse {
 	foreach my $ignored_token (@{$self->{ignored_tokens}}) {
 		@tokens = grep $_->[0] ne $ignored_token, @tokens;
 	}
+
+	@tokens = grep { $_->[0] ne 'whitespace' or $_->[1] =~ /\n/ } @tokens;
 
 	$self->{code_tokens} = \@tokens;
 	$self->{code_tokens_index} = 0;
@@ -179,8 +183,9 @@ sub confess_at_current_offset {
 }
 
 sub more_tokens {
-	my ($self) = @_;
-	return $self->{code_tokens_index} != @{$self->{code_tokens}}
+	my ($self, $offset) = @_;
+	$offset //= 0;
+	return $self->{code_tokens_index} + $offset < @{$self->{code_tokens}}
 }
 
 

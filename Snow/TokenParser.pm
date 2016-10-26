@@ -59,11 +59,17 @@ our @snow_keywords = qw/
 our @snow_syntax_tokens = (qw#
 	...
 	+
+	*
 	:
 	.
 	(
 	)
-#, ',');
+	=
+	?
+	$
+	@
+	%
+#, '#', ',');
 
 our $snow_keywords_regex = join '|', @snow_keywords;
 $snow_keywords_regex = qr/\b(?:$snow_keywords_regex)\b/;

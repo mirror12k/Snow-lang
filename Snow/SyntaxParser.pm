@@ -52,6 +52,9 @@ sub parse_syntax_block {
 
 sub parse_syntax_whitespace {
 	my ($self, $whitespace_prefix) = @_;
+
+	return 0 unless $self->more_tokens;
+
 	while ($self->is_token_type( 'whitespace' )) {
 		my $prefix = $self->peek_token->[1] =~ s/^.*\n([^\n]*)$/$1/rs;
 		# say "got prefix: '$prefix'";
@@ -97,8 +100,6 @@ sub parse_syntax_statements {
 	my ($self, $whitespace_prefix) = @_;
 
 	# say "debug parse_syntax_statements '$whitespace_prefix'";
-
-	return unless $self->more_tokens;
 
 	return unless $self->parse_syntax_whitespace($whitespace_prefix);
 
@@ -157,24 +158,54 @@ sub parse_syntax_statements {
 		}
 		push @statements, $statement;
 
+	} elsif ($self->is_token_val( keyword => 'local' )) {
+		$self->next_token;
+		my $names_list = [ $self->parse_syntax_names_list ];
+		my $expression_list;
+		if ($self->is_token_val( symbol => '=' )) {
+			$self->next_token;
+			$expression_list = [ $self->parse_syntax_expression_list ];
+		}
+
+		push @statements, {
+			type => 'variable_declaration_statement',
+			names_list => $names_list,
+			expression_list => $expression_list,
+		};
+
+	} elsif ($self->is_token_val( keyword => 'global' )) {
+		$self->next_token;
+		my $names_list = [ $self->parse_syntax_names_list ];
+		my $expression_list;
+		if ($self->is_token_val( symbol => '=' )) {
+			$self->next_token;
+			$expression_list = [ $self->parse_syntax_expression_list ];
+		}
+
+		push @statements, {
+			type => 'global_declaration_statement',
+			names_list => $names_list,
+			expression_list => $expression_list,
+		};
+
 	} elsif ($self->is_token_val( symbol => '(' ) or $self->is_token_type( 'identifier' )) {
 		my $prefix_expression = $self->parse_syntax_prefix_expression;
 		if ($prefix_expression->{type} eq 'function_call_expression' or $prefix_expression->{type} eq 'method_call_expression') {
 			push @statements, { type => 'call_statement', expression => $prefix_expression };
-		# } elsif ($prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
-		# 		or $prefix_expression->{type} eq 'expressive_access_expression') {
-		# 	my @var_list = ($prefix_expression);
-		# 	while ($self->is_token_val( symbol => ',' )) {
-		# 		$self->next_token;
-		# 		$prefix_expression = $self->parse_syntax_prefix_expression;
-		# 		$self->confess_at_current_offset("invalid varlist prefix expression $prefix_expression->{type}")
-		# 				unless $prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
-		# 				or $prefix_expression->{type} eq 'expressive_access_expression';
-		# 		push @var_list, $prefix_expression;
-		# 	}
-		# 	$self->confess_at_current_offset("expected '=' after varlist") unless $self->is_token_val( symbol => '=' );
-		# 	$self->next_token;
-		# 	push @statements, { type => 'assignment_statement', var_list => \@var_list, expression_list => [ $self->parse_syntax_expression_list ] };
+		} elsif ($prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
+				or $prefix_expression->{type} eq 'expressive_access_expression') {
+			my @var_list = ($prefix_expression);
+			while ($self->is_token_val( symbol => ',' )) {
+				$self->next_token;
+				$self->skip_whitespace_tokens;
+				$prefix_expression = $self->parse_syntax_prefix_expression;
+				$self->confess_at_current_offset("invalid varlist prefix expression $prefix_expression->{type}")
+						unless $prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
+						or $prefix_expression->{type} eq 'expressive_access_expression';
+				push @var_list, $prefix_expression;
+			}
+			$self->assert_step_token_val( symbol => '=' );
+			push @statements, { type => 'assignment_statement', var_list => \@var_list, expression_list => [ $self->parse_syntax_expression_list ] };
 		} else {
 			$self->confess_at_current_offset("unexpected prefix expression '$prefix_expression->{type}' (function call or variable assignment exected)");
 		}
@@ -294,6 +325,37 @@ sub parse_syntax_prefix_expression {
 	}
 }
 
+sub parse_syntax_names_list {
+	my ($self) = @_;
+
+	my @names_list;
+
+	$self->confess_at_current_offset("variable type expected") unless
+		$self->is_token_val( symbol => '?' )
+		or $self->is_token_val( symbol => '#' )
+		or $self->is_token_val( symbol => '$' )
+		or $self->is_token_val( symbol => '@' )
+		or $self->is_token_val( symbol => '%' )
+		or $self->is_token_val( symbol => '*' );
+	my $type = $self->next_token->[1];
+	push @names_list, $type . $self->assert_step_token_type('identifier')->[1];
+
+	while ($self->is_token_val( symbol => ',' )) {
+		$self->next_token;
+		$self->skip_whitespace_tokens;
+		$self->confess_at_current_offset("variable type expected") unless
+			$self->is_token_val( symbol => '?' )
+			or $self->is_token_val( symbol => '#' )
+			or $self->is_token_val( symbol => '$' )
+			or $self->is_token_val( symbol => '@' )
+			or $self->is_token_val( symbol => '%' )
+			or $self->is_token_val( symbol => '*' );
+		my $type = $self->next_token->[1];
+		push @names_list, $type . $self->assert_step_token_type('identifier')->[1];
+	}
+
+	return @names_list
+}
 
 
 sub parse_syntax_function_args_list {
@@ -307,7 +369,8 @@ sub parse_syntax_function_args_list {
 		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' )
 				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
-				or $self->is_token_val( keyword => ':' )) {
+				or $self->is_token_val( keyword => ':' )
+			) {
 			@args_list = $self->parse_syntax_expression_list;
 		}
 	}

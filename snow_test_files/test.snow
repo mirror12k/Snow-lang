@@ -51,3 +51,19 @@ foo:bar 'asdf',
 foo:bar nil
 foo:bar true, false
 
+obj.child.method 15, 'asdf'
+
+
+t[15] 'asdf'
+
+
+while fun 15
+	print 'lol'
+
+	a,b = 5,4
+	a = 5
+
+	local $foo, #bar = 5, 4
+	local $foo, #bar
+
+	global %g = 15

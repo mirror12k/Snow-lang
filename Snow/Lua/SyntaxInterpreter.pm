@@ -103,7 +103,7 @@ sub interpret_expression {
 	my @res;
 	if ($expression->{type} eq 'nil_constant') {
 		push @res, $lua_nil_constant;
-	} elsif ($expression->{type} eq 'bool_constant') {
+	} elsif ($expression->{type} eq 'boolean_constant') {
 		push @res, [ bool => $expression->{value} ];
 	} elsif ($expression->{type} eq 'numeric_constant') {
 		push @res, [ number => $expression->{value} ];

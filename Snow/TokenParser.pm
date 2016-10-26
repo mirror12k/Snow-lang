@@ -37,12 +37,27 @@ sub parse_file {
 
 
 our @snow_keywords = qw/
+	goto
+	break
+	last
+	next
+	redo
+
 	local
 	global
 	do
+	while
+	elseif
+	else
+	if
+
+	nil
+	true
+	false
 /;
 
 our @snow_syntax_tokens = (qw#
+	...
 	+
 	:
 #, ',');

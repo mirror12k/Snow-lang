@@ -253,7 +253,7 @@ sub parse_syntax_expression {
 
 	} elsif ($self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )) {
 		my $value = $self->next_token->[1] eq 'true';
-		$expression = { type => 'bool_constant', value => $value };
+		$expression = { type => 'boolean_constant', value => $value };
 
 	} elsif ($self->is_token_type('numeric_constant')) {
 		my $value = $self->next_token->[1];

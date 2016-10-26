@@ -322,7 +322,7 @@ sub parse_bytecode_expression {
 
 	if ($expression->{type} eq 'nil_constant') {
 		return ps => $lua_nil_constant
-	} elsif ($expression->{type} eq 'bool_constant') {
+	} elsif ($expression->{type} eq 'boolean_constant') {
 		return ps => [ boolean => $expression->{value} ]
 	} elsif ($expression->{type} eq 'numeric_constant') {
 		return ps => [ number => $expression->{value} ]

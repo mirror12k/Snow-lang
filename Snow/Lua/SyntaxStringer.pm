@@ -103,7 +103,7 @@ sub to_string_expression {
 
 	if ($expression->{type} eq 'nil_constant') {
 		return "nil"
-	} elsif ($expression->{type} eq 'bool_constant') {
+	} elsif ($expression->{type} eq 'boolean_constant') {
 		return $expression->{value} ? "true" : "false"
 	} elsif ($expression->{type} eq 'numeric_constant') {
 		return "$expression->{value}"

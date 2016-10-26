@@ -106,6 +106,13 @@ snow language spec draft v0.2
 				foo 5, bar(), 'asdf'
 					becomes:
 						foo(5, bar(), 'asdf')
+
+			this also applies to object method calls:
+				foo:bar
+				foo:bar 5
+				foo:bar 5, 4, 3
+
+
 		function declaration
 			named functions:
 				function foo
@@ -183,6 +190,7 @@ snow language spec draft v0.2
 					})
 
 
+
 		forin to simplify array and table iteration with default arguements:
 			arrays will always use ipairs while tables will always use pairs
 			array keys and values are always represented as read-only variable #k, *v
@@ -208,10 +216,18 @@ snow language spec draft v0.2
 				print 'v is less than 5'
 			else
 				print 'v is greater than 5'
+
+			unless statements are simply if statments which invert the condition:
+				unless true == false
+					print "logic still works"
 			
 		while statements:
 			while t
 				print "i have a table!"
+
+			until statements are simply while statements which invert the arguement:
+				until cond
+					print "condition is not yet met"
 			
 		for statements:
 			for #i = 1, 5
@@ -257,6 +273,20 @@ snow language spec draft v0.2
 			while true do ::redo_12346::
 				goto redo_12346
 			end
+		else cases on while and for loops:
+			for #i = 1, 5
+				if i % 2 == 1
+					last
+			else
+				print 'no odd numbers between 1 and 5'
 
+			while haystack:has_stuff
+				if haystack:pop == needle
+					last
+			else
+				print 'needle was not found in the haystack'
+
+			note: break and next do not jump the else case, last does
+			this is done by implementing the 'last' label after the else block
 
 

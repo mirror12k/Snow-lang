@@ -1,9 +1,6 @@
-
+/*
 // first comment
 
-/*
-	hello world
-*/
 
 // global a,b
 
@@ -26,7 +23,7 @@ while true
 	if nil
 		hey:
 	if true
-	
+
 	elseif true
 
 	elseif true
@@ -34,3 +31,23 @@ while true
 		T:
 	else
 		F:
+else
+	debug:
+
+
+*/
+
+
+
+asdf()
+
+
+
+
+foo:bar
+foo:bar 1
+foo:bar 'asdf',
+		'qwerty'
+foo:bar nil
+foo:bar true, false
+

@@ -37,7 +37,7 @@ sub parse_syntax_block {
 
 	my @block;
 	my $line_number = $self->current_line_number;
-	say "parse_syntax_block: '$whitespace_prefix'";
+	# say "parse_syntax_block: '$whitespace_prefix'";
 	while (my @statements = $self->parse_syntax_statements($whitespace_prefix)) {
 		push @block, map { $_->{line_number} = $line_number; $_ } @statements;
 		$line_number = $self->current_line_number;
@@ -54,15 +54,22 @@ sub parse_syntax_whitespace {
 	my ($self, $whitespace_prefix) = @_;
 	while ($self->is_token_type( 'whitespace' )) {
 		my $prefix = $self->peek_token->[1] =~ s/^.*\n([^\n]*)$/$1/rs;
-		say "got prefix: '$prefix'";
+		# say "got prefix: '$prefix'";
 		if (($self->more_tokens(1) and $self->is_token_type( 'whitespace', 1 )) or $prefix =~ /^$whitespace_prefix/) {
-			say "skipping whitespace";
+			# say "skipping whitespace";
 			$self->next_token;
 			return 1 unless $self->is_token_type( 'whitespace' );
 		} else {
-			say "whitespace end";
+			# say "whitespace end";
 			return 0
 		}
+	}
+}
+
+sub skip_whitespace_tokens {
+	my ($self) = @_;
+	while ($self->is_token_type( 'whitespace' )) {
+		$self->next_token;
 	}
 }
 
@@ -71,9 +78,9 @@ sub is_far_next_token {
 	my ($self, $type, $val, $whitespace_prefix) = @_;
 
 	my $index = $self->{code_tokens_index};
-	say "debug $index, '$whitespace_prefix'";
+	# say "debug $index, '$whitespace_prefix'";
 	if ($self->parse_syntax_whitespace($whitespace_prefix)) {
-		say "debug whitespace parsed";
+		# say "debug whitespace parsed";
 		if ($self->is_token_val($type => $val)) {
 			return 1
 		} else {
@@ -89,14 +96,14 @@ sub is_far_next_token {
 sub parse_syntax_statements {
 	my ($self, $whitespace_prefix) = @_;
 
-	say "debug parse_syntax_statements '$whitespace_prefix'";
+	# say "debug parse_syntax_statements '$whitespace_prefix'";
 
 	return unless $self->more_tokens;
 
 	return unless $self->parse_syntax_whitespace($whitespace_prefix);
 
 	my @statements;
-	if ($self->is_token_type( 'identifier' ) and $self->is_token_val( symbol => ':', 1 )) {
+	if ($self->is_token_type( 'identifier' ) and $self->is_token_val( symbol => ':', 1 ) and $self->is_token_type( whitespace => 2 )) {
 		my $identifier = $self->next_token->[1];
 		$self->next_token;
 		push @statements, { type => 'label_statement', identifier => $identifier };
@@ -126,28 +133,51 @@ sub parse_syntax_statements {
 	} elsif ($self->is_token_val( keyword => 'while' )) {
 		$self->next_token;
 		my $expression = $self->parse_syntax_expression;
-		push @statements, { type => 'while_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
+		my $statement = { type => 'while_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
+		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
+			$self->next_token;
+			$statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
+		}
+		push @statements, $statement;
+
 	} elsif ($self->is_token_val( keyword => 'if' )) {
-		say "debug if '$whitespace_prefix'";
 		$self->next_token;
 		my $expression = $self->parse_syntax_expression;
 		my $statement = { type => 'if_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		my $branch_statement = $statement;
-
 		while ($self->is_far_next_token(keyword => 'elseif', $whitespace_prefix)) {
 			$self->next_token;
 			$expression = $self->parse_syntax_expression;
 			$branch_statement->{branch} = { type => 'elseif_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 			$branch_statement = $branch_statement->{branch};
 		}
-
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
-			say "debug";
 			$self->next_token;
 			$branch_statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		}
-
 		push @statements, $statement;
+
+	} elsif ($self->is_token_val( symbol => '(' ) or $self->is_token_type( 'identifier' )) {
+		my $prefix_expression = $self->parse_syntax_prefix_expression;
+		if ($prefix_expression->{type} eq 'function_call_expression' or $prefix_expression->{type} eq 'method_call_expression') {
+			push @statements, { type => 'call_statement', expression => $prefix_expression };
+		# } elsif ($prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
+		# 		or $prefix_expression->{type} eq 'expressive_access_expression') {
+		# 	my @var_list = ($prefix_expression);
+		# 	while ($self->is_token_val( symbol => ',' )) {
+		# 		$self->next_token;
+		# 		$prefix_expression = $self->parse_syntax_prefix_expression;
+		# 		$self->confess_at_current_offset("invalid varlist prefix expression $prefix_expression->{type}")
+		# 				unless $prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
+		# 				or $prefix_expression->{type} eq 'expressive_access_expression';
+		# 		push @var_list, $prefix_expression;
+		# 	}
+		# 	$self->confess_at_current_offset("expected '=' after varlist") unless $self->is_token_val( symbol => '=' );
+		# 	$self->next_token;
+		# 	push @statements, { type => 'assignment_statement', var_list => \@var_list, expression_list => [ $self->parse_syntax_expression_list ] };
+		} else {
+			$self->confess_at_current_offset("unexpected prefix expression '$prefix_expression->{type}' (function call or variable assignment exected)");
+		}
 	}
 
 	return @statements
@@ -203,8 +233,8 @@ sub parse_syntax_expression {
 			expression => $self->parse_syntax_expression,
 		};
 	} else {
-		# $expression = $self->parse_syntax_prefix_expression;
-		$self->confess_at_current_offset('expression expected');
+		$expression = $self->parse_syntax_prefix_expression;
+		# $self->confess_at_current_offset('expression expected');
 	}
 
 	# $expression = $self->parse_syntax_more_expression($expression);
@@ -212,6 +242,93 @@ sub parse_syntax_expression {
 	return $expression
 }
 
+
+
+sub parse_syntax_prefix_expression {
+	my ($self) = @_;
+
+	my $expression;
+
+	if ($self->is_token_val( symbol => '(' )) {
+		$self->next_token;
+		$expression = { type => 'parenthesis_expression', expression => $self->parse_syntax_expression };
+		$self->assert_step_token_val( symbol => ')' );
+	} elsif ($self->is_token_type( 'identifier' )) {
+		my $identifier = $self->next_token->[1];
+		$expression = { type => 'identifier_expression', identifier => $identifier };
+	} else {
+		say $self->dump_at_current_offset;
+		$self->confess_at_current_offset('invalid prefix expression');
+	}
+
+	while (1) {
+		# say "debug: ", join ', ', $self->is_token_val( symbol => ':' ), $self->is_token_type( 'identifier', 1 );
+		if ($self->is_token_val( symbol => '.' )) {
+			$self->next_token;
+			my $identifier = $self->assert_step_token_type('identifier')->[1];
+			$expression = { type => 'access_expression', expression => $expression, identifier => $identifier };
+
+		} elsif ($self->is_token_val( symbol => '[' )) {
+			$self->next_token;
+			$expression = { type => 'expressive_access_expression', expression => $expression, access_expression => $self->parse_syntax_expression };
+			$self->assert_step_token_val( symbol => ']' );
+
+		} elsif ($self->is_token_val( symbol => ':' ) and $self->is_token_type( 'identifier', 1 )) {
+			$self->next_token;
+			my $identifier = $self->next_token->[1];
+			my $args_list = [ $self->parse_syntax_function_args_list ];
+			$expression = { type => 'method_call_expression', identifier => $identifier, expression => $expression, args_list => $args_list };
+
+		} elsif ($self->is_token_val( symbol => '(' )
+				or $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' )
+				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
+				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
+				or $self->is_token_val( keyword => ':' )
+			) {
+			my $args_list = [ $self->parse_syntax_function_args_list ];
+			$expression = { type => 'function_call_expression', expression => $expression, args_list => $args_list };
+
+		} else {
+			return $expression;
+		}
+	}
+}
+
+
+
+sub parse_syntax_function_args_list {
+	my ($self) = @_;
+	my @args_list;
+	if ($self->is_token_val( symbol => '(' )) {
+		$self->next_token;
+		@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
+		$self->assert_step_token_val( symbol => ')' );
+	} else {
+		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' )
+				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
+				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
+				or $self->is_token_val( keyword => ':' )) {
+			@args_list = $self->parse_syntax_expression_list;
+		}
+	}
+
+	return @args_list
+}
+
+sub parse_syntax_expression_list {
+	my ($self) = @_;
+
+	my @expression_list;
+	push @expression_list, $self->parse_syntax_expression;
+
+	while ($self->is_token_val( symbol => ',' )) {
+		$self->next_token;
+		$self->skip_whitespace_tokens;
+		push @expression_list, $self->parse_syntax_expression;
+	}
+
+	return @expression_list
+}
 
 
 1;

@@ -60,6 +60,9 @@ our @snow_syntax_tokens = (qw#
 	...
 	+
 	:
+	.
+	(
+	)
 #, ',');
 
 our $snow_keywords_regex = join '|', @snow_keywords;
@@ -137,8 +140,12 @@ sub peek_token {
 
 sub current_line_number {
 	my ($self) = @_;
-	return undef unless $self->more_tokens;
-	return $self->{code_tokens}[$self->{code_tokens_index}][2]
+	my $index = 0;
+	while ($self->more_tokens($index)) {
+		return $self->{code_tokens}[$self->{code_tokens_index} + $index][2] unless $self->is_token_type( whitespace => $index );
+		$index++;		
+	}
+	return undef
 }
 
 sub next_token {

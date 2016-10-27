@@ -56,12 +56,24 @@ our @snow_keywords = qw/
 	nil
 	true
 	false
+
+	not
+	and
+	or
 /;
 
 our @snow_syntax_tokens = (qw#
+	<=
+	>=
+	<
+	>
+	==
+	~=
 	...
 	+
+	-
 	*
+	/
 	:
 	.
 	(
@@ -69,6 +81,7 @@ our @snow_syntax_tokens = (qw#
 	=
 	?
 	$
+	&
 	@
 	%
 #, '#', ',');

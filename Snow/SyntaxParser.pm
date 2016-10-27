@@ -338,6 +338,7 @@ sub parse_syntax_names_list {
 		$self->is_token_val( symbol => '?' )
 		or $self->is_token_val( symbol => '#' )
 		or $self->is_token_val( symbol => '$' )
+		or $self->is_token_val( symbol => '&' )
 		or $self->is_token_val( symbol => '@' )
 		or $self->is_token_val( symbol => '%' )
 		or $self->is_token_val( symbol => '*' );
@@ -351,6 +352,7 @@ sub parse_syntax_names_list {
 			$self->is_token_val( symbol => '?' )
 			or $self->is_token_val( symbol => '#' )
 			or $self->is_token_val( symbol => '$' )
+			or $self->is_token_val( symbol => '&' )
 			or $self->is_token_val( symbol => '@' )
 			or $self->is_token_val( symbol => '%' )
 			or $self->is_token_val( symbol => '*' );

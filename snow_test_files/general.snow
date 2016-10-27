@@ -3,12 +3,15 @@
 print 'hey'
 print 5, 15
 
+global &fun
+
 while true
 	print 'loop'
 	do
 		asdf:
 		fun()
 
+	local %obj
 	obj:a
 	obj:b 5
 
@@ -34,3 +37,9 @@ unless false
 until false
 	print 'still trying to break physics'
 
+
+
+local *t
+global ?b
+global ?b, %tabl
+local $a, #beta

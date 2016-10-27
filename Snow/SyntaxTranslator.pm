@@ -33,6 +33,14 @@ sub parse {
 	my ($self, $text) = @_;
 	$self->SUPER::parse($text);
 
+	$self->{variables_stack} = [];
+	$self->{variables_defined} = {
+		print => '&',
+	};
+	$self->{globals_defined} = {
+		print => '&',
+	};
+
 	$self->{syntax_tree} = [ $self->translate_syntax_block($self->{syntax_tree}) ];
 
 	return $self->{syntax_tree}
@@ -61,10 +69,57 @@ sub pop_snow_loop_labels {
 	$self->{snow_redo_label} = pop @{$self->{snow_redo_label_stack}};
 }
 
+sub register_globals {
+	my ($self, @globals) = @_;
+	foreach my $var (@globals) {
+		my $type = substr $var, 0, 1;
+		my $identifier = substr $var, 1;
+		die "global redefined with conflicting type ($self->{globals_defined}{$identifier} vs $type)"
+			if exists $self->{globals_defined}{$identifier} and $self->{globals_defined}{$identifier} ne $type;
+		$self->{globals_defined}{$identifier} = $type;
+		$self->{variables_defined}{$identifier} = $type;
+	}
+}
+
+sub register_locals {
+	my ($self, @locals) = @_;
+	foreach my $var (@locals) {
+		my $type = substr $var, 0, 1;
+		my $identifier = substr $var, 1;
+		$self->{variables_defined}{$identifier} = $type;
+	}
+}
+
+sub get_var_type {
+	my ($self, $identifier) = @_;
+	return $self->{variables_defined}{$identifier} if exists $self->{variables_defined}{$identifier};
+	foreach my $vars (reverse @{$self->{variables_stack}}) {
+		return $vars->{$identifier} if exists $vars->{$identifier};
+	}
+
+	# warn Dumper $self->{variables_defined};
+	# warn Dumper $self->{variables_stack};
+
+	die "undefined variable referenced $identifier";
+}
+
+
+sub assert_sub_expression_type {
+	my ($self, $type, $expression) = @_;
+	die "attempt to use a '$expression->{var_type}' expression where a '$type' expression is required"
+		unless $expression->{var_type} eq '*' or $expression->{var_type} eq $type;
+}
+
+
+
 sub translate_syntax_block {
 	my ($self, $block) = @_;
 
-	return map $self->translate_syntax_statement($_), @$block
+	push @{$self->{variables_stack}}, $self->{variables_defined};
+	$self->{variables_defined} = {};
+	my @statements = map $self->translate_syntax_statement($_), @$block;
+	$self->{variables_defined} = pop @{$self->{variables_stack}};
+	return @statements
 }
 
 
@@ -101,7 +156,7 @@ sub translate_syntax_statement {
 			type => 'if_statement',
 			expression => $self->translate_syntax_expression($statement->{expression}),
 			block => [ $self->translate_syntax_block($statement->{block}) ],
-			(branch => (defined $statement->{branch} ? $self->translate_syntax_statement($statement->{branch}) : undef)),
+			branch => (defined $statement->{branch} ? $self->translate_syntax_statement($statement->{branch}) : undef),
 		}
 		
 	} elsif ($statement->{type} eq 'elseif_statement') {
@@ -109,7 +164,7 @@ sub translate_syntax_statement {
 			type => 'elseif_statement',
 			expression => $self->translate_syntax_expression($statement->{expression}),
 			block => [ $self->translate_syntax_block($statement->{block}) ],
-			(branch => (defined $statement->{branch} ? $self->translate_syntax_statement($statement->{branch}) : undef)),
+			branch => (defined $statement->{branch} ? $self->translate_syntax_statement($statement->{branch}) : undef),
 		}
 
 	} elsif ($statement->{type} eq 'else_statement') {
@@ -137,6 +192,17 @@ sub translate_syntax_statement {
 
 		return @statements
 
+	} elsif ($statement->{type} eq 'variable_declaration_statement') {
+		$self->register_locals(@{$statement->{names_list}});
+		return {
+			type => 'variable_declaration_statement',
+			names_list => [ map { substr $_, 1 } @{$statement->{names_list}} ],
+			expression_list => ( defined $statement->{expression_list} ? $self->translate_syntax_expression_list($statement->{expression_list}) : undef ),
+		}
+	} elsif ($statement->{type} eq 'global_declaration_statement') {
+		$self->register_globals(@{$statement->{names_list}});
+		return
+
 	} elsif ($statement->{type} eq 'call_statement') {
 		return {
 			type => 'call_statement',
@@ -155,42 +221,64 @@ sub translate_syntax_expression {
 
 
 	if ($expression->{type} eq 'nil_constant') {
-		return $expression
+		return { type => 'nil_constant', value => $expression->{value}, var_type => '_' }
 
 	} elsif ($expression->{type} eq 'boolean_constant') {
-		return $expression
+		return { type => 'boolean_constant', value => $expression->{value}, var_type => '?' }
 		
 	} elsif ($expression->{type} eq 'numeric_constant') {
-		return $expression
+		return { type => 'numeric_constant', value => $expression->{value}, var_type => '#' }
 		
 	} elsif ($expression->{type} eq 'string_constant') {
 		# TODO: parse interpolation stuff
-		return $expression
+		return { type => 'string_constant', value => $expression->{value}, var_type => '$' }
 
 	} elsif ($expression->{type} eq 'vararg_expression') {
 		return $expression
 
 	} elsif ($expression->{type} eq 'parenthesis_expression') {
-		return { type => 'parenthesis_expression', expression => $self->translate_syntax_expression($expression->{expression}) }
+		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
+		return { type => 'parenthesis_expression', expression => $sub_expression, var_type => $sub_expression->{var_type} }
 
 	} elsif ($expression->{type} eq 'unary_expression') {
-		return { type => 'unary_expression', operation => $expression->{operation}, expression => $self->translate_syntax_expression($expression->{expression}) }
+		my $var_type;
+		my $check_type;
+		if ($expression->{operation} eq 'not') {
+			$var_type = '?';
+		} elsif ($expression->{operation} eq '#') {
+			$var_type = '#';
+			$check_type = '%';
+		} elsif ($expression->{operation} eq '-') {
+			$var_type = '#';
+			$check_type = '#';
+		} else {
+			die "unimplemented unary expression operation: $expression->{operation}";
+		}
+		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
+		$self->assert_sub_expression_type($check_type => $sub_expression) if defined $check_type;
+		return { type => 'unary_expression', operation => $expression->{operation}, expression => $sub_expression }
 
 	} elsif ($expression->{type} eq 'identifier_expression') {
-		return $expression
+		# TODO; implement variable verification
+		my $var_type = $self->get_var_type($expression->{identifier});
+		return { type => 'identifier_expression', identifier => $expression->{identifier}, var_type => $var_type }
 		
 	} elsif ($expression->{type} eq 'function_call_expression') {
+		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
+		$self->assert_sub_expression_type('&' => $sub_expression);
 		return {
 			type => 'function_call_expression',
-			expression => $self->translate_syntax_expression($expression->{expression}),
+			expression => $sub_expression,
 			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
 		}
 		
 	} elsif ($expression->{type} eq 'method_call_expression') {
+		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
+		$self->assert_sub_expression_type('%' => $sub_expression);
 		return {
 			type => 'method_call_expression',
 			identifier => $expression->{identifier},
-			expression => $self->translate_syntax_expression($expression->{expression}),
+			expression => $sub_expression,
 			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
 		}
 

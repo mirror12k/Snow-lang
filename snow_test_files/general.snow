@@ -20,3 +20,17 @@ while false
 	last
 else
 	print 'in else'
+
+
+if true
+	print 'is true'
+else
+	print 'is false'
+
+unless false
+	print 'this is true'
+
+
+until false
+	print 'still trying to break physics'
+

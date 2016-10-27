@@ -47,9 +47,11 @@ our @snow_keywords = qw/
 	global
 	do
 	while
+	until
 	elseif
 	else
 	if
+	unless
 
 	nil
 	true

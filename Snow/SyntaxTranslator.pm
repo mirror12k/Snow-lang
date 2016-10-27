@@ -96,6 +96,28 @@ sub translate_syntax_statement {
 	} elsif ($statement->{type} eq 'block_statement') {
 		return { type => 'block_statement', block => [ $self->translate_syntax_block($statement->{block}) ] }
 
+	} elsif ($statement->{type} eq 'if_statement') {
+		return {
+			type => 'if_statement',
+			expression => $self->translate_syntax_expression($statement->{expression}),
+			block => [ $self->translate_syntax_block($statement->{block}) ],
+			(branch => (defined $statement->{branch} ? $self->translate_syntax_statement($statement->{branch}) : undef)),
+		}
+		
+	} elsif ($statement->{type} eq 'elseif_statement') {
+		return {
+			type => 'elseif_statement',
+			expression => $self->translate_syntax_expression($statement->{expression}),
+			block => [ $self->translate_syntax_block($statement->{block}) ],
+			(branch => (defined $statement->{branch} ? $self->translate_syntax_statement($statement->{branch}) : undef)),
+		}
+
+	} elsif ($statement->{type} eq 'else_statement') {
+		return {
+			type => 'else_statement',
+			block => [ $self->translate_syntax_block($statement->{block}) ],
+		}
+
 	} elsif ($statement->{type} eq 'while_statement') {
 		$self->push_snow_loop_labels;
 		my @statements = ({
@@ -148,6 +170,12 @@ sub translate_syntax_expression {
 	} elsif ($expression->{type} eq 'vararg_expression') {
 		return $expression
 
+	} elsif ($expression->{type} eq 'parenthesis_expression') {
+		return { type => 'parenthesis_expression', expression => $self->translate_syntax_expression($expression->{expression}) }
+
+	} elsif ($expression->{type} eq 'unary_expression') {
+		return { type => 'unary_expression', operation => $expression->{operation}, expression => $self->translate_syntax_expression($expression->{expression}) }
+
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		return $expression
 		
@@ -155,7 +183,7 @@ sub translate_syntax_expression {
 		return {
 			type => 'function_call_expression',
 			expression => $self->translate_syntax_expression($expression->{expression}),
-			args_list => $self->translate_syntax_expression_list($expression->{args_list}),
+			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
 		}
 		
 	} elsif ($expression->{type} eq 'method_call_expression') {
@@ -163,7 +191,7 @@ sub translate_syntax_expression {
 			type => 'method_call_expression',
 			identifier => $expression->{identifier},
 			expression => $self->translate_syntax_expression($expression->{expression}),
-			args_list => $self->translate_syntax_expression_list($expression->{args_list}),
+			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
 		}
 
 	} else {
@@ -174,7 +202,7 @@ sub translate_syntax_expression {
 sub translate_syntax_expression_list {
 	my ($self, $expression_list) = @_;
 
-	return [ map $self->translate_syntax_expression($_), @$expression_list ]
+	return map $self->translate_syntax_expression($_), @$expression_list
 }
 
 

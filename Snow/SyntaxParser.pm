@@ -131,9 +131,11 @@ sub parse_syntax_statements {
 		$self->next_token;
 		push @statements, { type => 'block_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 
-	} elsif ($self->is_token_val( keyword => 'while' )) {
-		$self->next_token;
+	} elsif ($self->is_token_val( keyword => 'while' ) or $self->is_token_val( keyword => 'until' )) {
+		my $invert = $self->next_token->[1] eq 'until';
 		my $expression = $self->parse_syntax_expression;
+		$expression = { type => 'unary_expression', operation => 'not', expression => { type => 'parenthesis_expression', expression => $expression } }
+			if $invert;
 		my $statement = { type => 'while_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
 			$self->next_token;
@@ -141,9 +143,11 @@ sub parse_syntax_statements {
 		}
 		push @statements, $statement;
 
-	} elsif ($self->is_token_val( keyword => 'if' )) {
-		$self->next_token;
+	} elsif ($self->is_token_val( keyword => 'if' ) or $self->is_token_val( keyword => 'unless' )) {
+		my $invert = $self->next_token->[1] eq 'unless';
 		my $expression = $self->parse_syntax_expression;
+		$expression = { type => 'unary_expression', operation => 'not', expression => { type => 'parenthesis_expression', expression => $expression } }
+			if $invert;
 		my $statement = { type => 'if_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		my $branch_statement = $statement;
 		while ($self->is_far_next_token(keyword => 'elseif', $whitespace_prefix)) {

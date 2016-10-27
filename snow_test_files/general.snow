@@ -7,3 +7,16 @@ while true
 	print 'loop'
 	do
 		asdf:
+		fun()
+
+	obj:a
+	obj:b 5
+
+
+while false
+	next
+	print 'in while'
+	redo
+	last
+else
+	print 'in else'

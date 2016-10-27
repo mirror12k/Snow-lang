@@ -272,11 +272,57 @@ sub parse_syntax_expression {
 		# $self->confess_at_current_offset('expression expected');
 	}
 
-	# $expression = $self->parse_syntax_more_expression($expression);
+	$expression = $self->parse_syntax_more_expression($expression);
 
 	return $expression
 }
 
+
+
+our @snow_syntax_binary_operations = qw#
+	or
+	and
+	<
+	>
+	<=
+	>=
+	~=
+	==
+	|
+	~
+	&
+	<<
+	>>
+	+
+	-
+	*
+	/
+	//
+	%
+#;
+
+our %snow_syntax_binary_operations_hash;
+@snow_syntax_binary_operations_hash{@snow_syntax_binary_operations} = ();
+
+
+sub parse_syntax_more_expression {
+	my ($self, $expression) = @_;
+
+	while (1) {
+		if (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $snow_syntax_binary_operations_hash{$self->peek_token->[1]}) {
+			# TODO: fix precedence
+			my $operation = $self->next_token->[1];
+			$expression = {
+				type => 'binary_expression',
+				operation => $operation,
+				expression_left => $expression,
+				expression_right => $self->parse_syntax_expression,
+			};
+		} else {
+			return $expression
+		}
+	}
+}
 
 
 sub parse_syntax_prefix_expression {
@@ -315,7 +361,7 @@ sub parse_syntax_prefix_expression {
 			$expression = { type => 'method_call_expression', identifier => $identifier, expression => $expression, args_list => $args_list };
 
 		} elsif ($self->is_token_val( symbol => '(' )
-				or $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' )
+				or $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' ) or $self->is_token_type( 'identifier' )
 				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
 				or $self->is_token_val( keyword => ':' )
@@ -372,7 +418,7 @@ sub parse_syntax_function_args_list {
 		@args_list = $self->parse_syntax_expression_list unless $self->is_token_val( symbol => ')' );
 		$self->assert_step_token_val( symbol => ')' );
 	} else {
-		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' )
+		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' ) or $self->is_token_type( 'identifier' )
 				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
 				or $self->is_token_val( keyword => ':' )

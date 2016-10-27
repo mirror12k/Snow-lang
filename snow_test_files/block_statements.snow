@@ -7,3 +7,8 @@ if true
 	print 'hello world'
 else
 	print 'what'
+
+
+local #n = 5 + 4
+
+print n

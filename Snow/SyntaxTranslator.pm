@@ -197,7 +197,7 @@ sub translate_syntax_statement {
 		return {
 			type => 'variable_declaration_statement',
 			names_list => [ map { substr $_, 1 } @{$statement->{names_list}} ],
-			expression_list => ( defined $statement->{expression_list} ? $self->translate_syntax_expression_list($statement->{expression_list}) : undef ),
+			expression_list => ( defined $statement->{expression_list} ? [ $self->translate_syntax_expression_list($statement->{expression_list}) ] : undef ),
 		}
 	} elsif ($statement->{type} eq 'global_declaration_statement') {
 		$self->register_globals(@{$statement->{names_list}});
@@ -256,10 +256,35 @@ sub translate_syntax_expression {
 		}
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
 		$self->assert_sub_expression_type($check_type => $sub_expression) if defined $check_type;
-		return { type => 'unary_expression', operation => $expression->{operation}, expression => $sub_expression }
+		return { type => 'unary_expression', operation => $expression->{operation}, expression => $sub_expression, var_type => $var_type }
+
+	} elsif ($expression->{type} eq 'binary_expression') {
+		my $var_type;
+		my $check_type;
+		if ($expression->{operation} eq '+') {
+			# TODO implement dynamic translation to concatenation
+			$var_type = '#';
+		} elsif ($expression->{operation} eq '-' or $expression->{operation} eq '*' or $expression->{operation} eq '/') {
+			$var_type = '#';
+		} elsif ($expression->{operation} eq '==' or$expression->{operation} eq '~=' or $expression->{operation} eq '>'
+				or $expression->{operation} eq '<' or $expression->{operation} eq '>=' or $expression->{operation} eq '<=') {
+			$var_type = '?';
+		} else {
+			die "unimplemented binary expression operation: $expression->{operation}";
+		}
+		my $sub_expression_l = $self->translate_syntax_expression($expression->{expression_left});
+		my $sub_expression_r = $self->translate_syntax_expression($expression->{expression_right});
+		$self->assert_sub_expression_type($check_type => $sub_expression_l) if defined $check_type;
+		$self->assert_sub_expression_type($check_type => $sub_expression_r) if defined $check_type;
+		return {
+			type => 'binary_expression',
+			operation => $expression->{operation},
+			expression_left => $sub_expression_l,
+			expression_right => $sub_expression_r,
+			var_type => $var_type
+		}
 
 	} elsif ($expression->{type} eq 'identifier_expression') {
-		# TODO; implement variable verification
 		my $var_type = $self->get_var_type($expression->{identifier});
 		return { type => 'identifier_expression', identifier => $expression->{identifier}, var_type => $var_type }
 		

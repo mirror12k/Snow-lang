@@ -193,6 +193,7 @@ sub translate_syntax_statement {
 		return @statements
 
 	} elsif ($statement->{type} eq 'variable_declaration_statement') {
+		# TODO: verify assignment types
 		$self->register_locals(@{$statement->{names_list}});
 		return {
 			type => 'variable_declaration_statement',
@@ -200,6 +201,7 @@ sub translate_syntax_statement {
 			expression_list => ( defined $statement->{expression_list} ? [ $self->translate_syntax_expression_list($statement->{expression_list}) ] : undef ),
 		}
 	} elsif ($statement->{type} eq 'global_declaration_statement') {
+		# TODO: verify assignment types
 		$self->register_globals(@{$statement->{names_list}});
 		return
 
@@ -208,6 +210,13 @@ sub translate_syntax_statement {
 			type => 'call_statement',
 			expression => $self->translate_syntax_expression($statement->{expression}),
 		}
+	} elsif ($statement->{type} eq 'assignment_statement') {
+		# TODO: verify assignment types
+		return {
+			type => 'assignment_statement',
+			var_list => [ $self->translate_syntax_expression_list($statement->{var_list}) ],
+			expression_list => [ $self->translate_syntax_expression_list($statement->{expression_list}) ],
+		};
 
 	} else {
 		die "unimplemented statement to translate: $statement->{type}";
@@ -287,6 +296,16 @@ sub translate_syntax_expression {
 	} elsif ($expression->{type} eq 'identifier_expression') {
 		my $var_type = $self->get_var_type($expression->{identifier});
 		return { type => 'identifier_expression', identifier => $expression->{identifier}, var_type => $var_type }
+		
+	} elsif ($expression->{type} eq 'access_expression') {
+		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
+		return { type => 'identifier_expression', identifier => $expression->{identifier}, expression => $sub_expression, var_type => '*' }
+
+	} elsif ($expression->{type} eq 'expressive_access_expression') {
+		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
+		my $access_expression = $self->translate_syntax_expression($expression->{access_expression});
+		return { type => 'identifier_expression', identifier => $expression->{identifier}, expression => $sub_expression,
+				access_expression => $access_expression, var_type => '*' }
 		
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});

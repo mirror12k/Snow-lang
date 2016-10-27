@@ -12,3 +12,7 @@ else
 local #n = 5 + 4
 
 print n
+
+global #a
+
+a = 5

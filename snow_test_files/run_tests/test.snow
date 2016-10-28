@@ -1,0 +1,21 @@
+
+
+print 'hello world!'
+
+local #n = 3
+while n > 0
+	print n
+	n = n - 1
+
+local #n
+print n
+
+local #n = 3
+while true
+	print n
+	n = n - 1
+	if n == 0
+		last
+else
+	print 'will never print 1'
+

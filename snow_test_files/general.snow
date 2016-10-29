@@ -54,5 +54,7 @@ function argtest #$%
 	print 'argtest'
 function argtest2 #$$%***
 	print 'argtest2', n, s2
-function argtest3 #num $string
+function argtest3 var1, var2
+	print 'argtest2', var1
+function argtest3 #num, $string
 	print 'argtest2', num

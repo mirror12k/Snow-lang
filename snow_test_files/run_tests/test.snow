@@ -75,3 +75,10 @@ testarg 'hello'
 testarg()
 testarg 5, 4
 
+
+function testarg2 var1, var2
+	print 'testarg2:', var1, var2
+
+testarg2 5, 4, 3
+testarg2 5
+

@@ -23,3 +23,5 @@ hello world from testfun
 got arg:	hello
 got arg:	nil
 got arg:	5
+testarg2:	5	4
+testarg2:	5	nil

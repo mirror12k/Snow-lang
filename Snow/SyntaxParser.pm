@@ -470,18 +470,41 @@ my %snow_syntax_default_variable_identifiers = (
 
 sub parse_syntax_args_list {
 	my ($self) = @_;
-	my @args_list;
 
+	my @args_list;
 	my %var_map;
+
+	my $is_named;
 	while (
 			$self->is_token_val(symbol => '?') or $self->is_token_val(symbol => '#') or $self->is_token_val(symbol => '$')
 			or $self->is_token_val(symbol => '%') or $self->is_token_val(symbol => '&') or $self->is_token_val(symbol => '*')
+			or $self->is_token_type('identifier')
 		) {
-		my $type = $self->next_token->[1];
+		my $type;
 		my $identifier;
 		if ($self->is_token_type('identifier')) {
-			$identifier = $self->next_token->[1];
+			$is_named = 1 unless defined $is_named;
+			die "attempt to mix named and default function arguments" if $is_named == 0;
+			$type = '*';
 		} else {
+			$type = $self->next_token->[1];
+		}
+
+		if ($self->is_token_type('identifier')) {
+			$is_named = 1 unless defined $is_named;
+			die "attempt to mix named and default function arguments" if $is_named == 0;
+			$identifier = $self->next_token->[1];
+
+			if ($self->is_token_val( symbol => ',' )) {
+				$self->next_token;
+			} else {
+				push @args_list, "$type$identifier";
+				last;
+			}
+		} else {
+			$is_named = 0 unless defined $is_named;
+			die "attempt to mix named and default function arguments" if $is_named == 1;
+
 			unless (defined $var_map{$type}) {
 				$var_map{$type} = 1;
 				$identifier = $snow_syntax_default_variable_identifiers{$type};

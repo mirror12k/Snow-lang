@@ -113,10 +113,10 @@ sub assert_sub_expression_type {
 
 
 sub translate_syntax_block {
-	my ($self, $block) = @_;
+	my ($self, $block, $scope_vars) = @_;
 
 	push @{$self->{variables_stack}}, $self->{variables_defined};
-	$self->{variables_defined} = {};
+	$self->{variables_defined} = $scope_vars // {};
 	my @statements = map $self->translate_syntax_statement($_), @$block;
 	$self->{variables_defined} = pop @{$self->{variables_stack}};
 	return @statements
@@ -229,7 +229,11 @@ sub translate_syntax_statement {
 		return {
 			type => 'assignment_statement',
 			var_list => [ { type => 'identifier_expression', identifier => $statement->{identifier} } ],
-			expression_list => [ { type => 'function_expression', args_list => [], block => [ $self->translate_syntax_block($statement->{block}) ] } ],
+			expression_list => [ {
+				type => 'function_expression',
+				args_list => [ map { substr $_, 1 } @{$statement->{args_list}} ],
+				block => [ $self->translate_syntax_block($statement->{block}, { map { substr ($_, 1) => substr ($_, 0, 1) } @{$statement->{args_list}} }) ],
+			} ],
 		}
 
 	} else {

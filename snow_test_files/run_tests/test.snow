@@ -68,3 +68,10 @@ function testfun
 testfun()
 testfun()
 
+function testarg $
+	print 'got arg:', s
+
+testarg 'hello'
+testarg()
+testarg 5, 4
+

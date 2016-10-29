@@ -165,9 +165,11 @@ sub parse_syntax_statements {
 	} elsif ($self->is_token_val( keyword => 'function' )) {
 		$self->next_token;
 		my $identifier = $self->assert_step_token_type('identifier')->[1];
+		my $args_list = $self->parse_syntax_args_list;
 		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
 		push @statements, {
 			type => 'function_declaration_statement',
+			args_list => $args_list,
 			identifier => $identifier,
 			block => $block,
 		};
@@ -455,6 +457,54 @@ sub parse_syntax_expression_list {
 
 	return @expression_list
 }
+
+
+my %snow_syntax_default_variable_identifiers = (
+	'?' => 'b',
+	'#' => 'n',
+	'$' => 's',
+	'%' => 't',
+	'&' => 'f',
+	'*' => 'x',
+);
+
+sub parse_syntax_args_list {
+	my ($self) = @_;
+	my @args_list;
+
+	my %var_map;
+	while (
+			$self->is_token_val(symbol => '?') or $self->is_token_val(symbol => '#') or $self->is_token_val(symbol => '$')
+			or $self->is_token_val(symbol => '%') or $self->is_token_val(symbol => '&') or $self->is_token_val(symbol => '*')
+		) {
+		my $type = $self->next_token->[1];
+		my $identifier;
+		if ($self->is_token_type('identifier')) {
+			$identifier = $self->next_token->[1];
+		} else {
+			unless (defined $var_map{$type}) {
+				$var_map{$type} = 1;
+				$identifier = $snow_syntax_default_variable_identifiers{$type};
+			} else {
+				if ($var_map{$type} == 1) {
+					my $search = "$type$snow_syntax_default_variable_identifiers{$type}";
+					@args_list = map {
+						$_ eq $search ?
+							"${_}1" :
+							$_
+					} @args_list;
+				}
+				$var_map{$type}++;
+				$identifier = "$snow_syntax_default_variable_identifiers{$type}$var_map{$type}";
+			}
+		}
+
+		push @args_list, "$type$identifier"
+	}
+
+	return \@args_list
+}
+
 
 
 1;

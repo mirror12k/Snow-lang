@@ -49,3 +49,10 @@ function foo
 
 
 foo()
+
+function argtest #$%
+	print 'argtest'
+function argtest2 #$$%***
+	print 'argtest2', n, s2
+function argtest3 #num $string
+	print 'argtest2', num

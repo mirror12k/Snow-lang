@@ -20,3 +20,6 @@ my s:	local s
 my s:	global s
 hello world from testfun
 hello world from testfun
+got arg:	hello
+got arg:	nil
+got arg:	5

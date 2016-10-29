@@ -84,3 +84,8 @@ for i, v in ipairs({4,5, a=6, b=7}) do
 	print('test3', i, v)
 end
 
+local i = 15
+for i = 1,0 do
+end
+print ('known issue which fails: ', i)
+

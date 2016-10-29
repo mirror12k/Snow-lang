@@ -43,8 +43,11 @@ our @snow_keywords = qw/
 	next
 	redo
 
+	function
+	method
 	local
 	global
+
 	do
 	while
 	until

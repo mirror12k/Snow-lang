@@ -162,6 +162,17 @@ sub parse_syntax_statements {
 		}
 		push @statements, $statement;
 
+	} elsif ($self->is_token_val( keyword => 'function' )) {
+		$self->next_token;
+		my $identifier = $self->assert_step_token_type('identifier')->[1];
+		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
+		push @statements, {
+			type => 'function_declaration_statement',
+			identifier => $identifier,
+			block => $block,
+		};
+		
+
 	} elsif ($self->is_token_val( keyword => 'local' )) {
 		$self->next_token;
 		my $names_list = [ $self->parse_syntax_names_list ];

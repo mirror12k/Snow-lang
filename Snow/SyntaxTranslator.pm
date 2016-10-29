@@ -203,20 +203,34 @@ sub translate_syntax_statement {
 	} elsif ($statement->{type} eq 'global_declaration_statement') {
 		# TODO: verify assignment types
 		$self->register_globals(@{$statement->{names_list}});
-		return
+		return unless defined $statement->{expression_list};
+		return {
+			type => 'assignment_statement',
+			var_list => [ map { { type => 'identifier_expression', identifier => substr $_, 1 } } @{$statement->{names_list}} ],
+			expression_list => [ $self->translate_syntax_expression_list($statement->{expression_list}) ],
+		}
 
 	} elsif ($statement->{type} eq 'call_statement') {
 		return {
 			type => 'call_statement',
 			expression => $self->translate_syntax_expression($statement->{expression}),
 		}
+
 	} elsif ($statement->{type} eq 'assignment_statement') {
 		# TODO: verify assignment types
 		return {
 			type => 'assignment_statement',
 			var_list => [ $self->translate_syntax_expression_list($statement->{var_list}) ],
 			expression_list => [ $self->translate_syntax_expression_list($statement->{expression_list}) ],
-		};
+		}
+
+	} elsif ($statement->{type} eq 'function_declaration_statement') {
+		$self->register_globals("\&$statement->{identifier}");
+		return {
+			type => 'assignment_statement',
+			var_list => [ { type => 'identifier_expression', identifier => $statement->{identifier} } ],
+			expression_list => [ { type => 'function_expression', args_list => [], block => [ $self->translate_syntax_block($statement->{block}) ] } ],
+		}
 
 	} else {
 		die "unimplemented statement to translate: $statement->{type}";
@@ -325,6 +339,14 @@ sub translate_syntax_expression {
 			expression => $sub_expression,
 			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
 		}
+		
+	# } elsif ($expression->{type} eq 'function_expression') {
+	# 	return {
+	# 		type => 'function_expression',
+	# 		args_list => $expression->{args_list},
+	# 		block => [ $self->translate_syntax_block($expression->{block}) ],
+	# 		var_type => '&',
+	# 	}
 
 	} else {
 		die "unimplemented expression in translation $expression->{type}";

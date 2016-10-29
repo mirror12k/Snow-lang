@@ -43,3 +43,9 @@ local *t
 global ?b
 global ?b, %tabl
 local $a, #beta
+
+function foo
+	print 'hello world!'
+
+
+foo()

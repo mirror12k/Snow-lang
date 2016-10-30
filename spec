@@ -120,6 +120,22 @@ snow language spec draft v0.2
 				
 				function bar $x
 					print x
+
+			argument parenthesis are optional:
+				function baz (#a, #b, #c)
+					print a + b + c
+				// equals
+				function baz #a, #b, #c
+					print a + b + c
+			arguments declared without a type are implied star args:
+				function baz a, b, c
+					print a + b + c
+				// equals
+				function baz *a, *b, *c
+					print a + b + c
+
+
+
 			default function arguments:
 				function foo #n=5, $s='world'
 					// code

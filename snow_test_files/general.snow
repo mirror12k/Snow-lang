@@ -58,3 +58,5 @@ function argtest3 var1, var2
 	print 'argtest2', var1
 function argtest3 #num, $string
 	print 'argtest2', num
+function parenargtest (num, tab, str)
+	print 'this is parenargtest'

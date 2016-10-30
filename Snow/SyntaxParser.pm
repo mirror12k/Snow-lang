@@ -165,7 +165,10 @@ sub parse_syntax_statements {
 	} elsif ($self->is_token_val( keyword => 'function' )) {
 		$self->next_token;
 		my $identifier = $self->assert_step_token_type('identifier')->[1];
+		my $has_parenthesis = $self->is_token_val( symbol => '(' );
+		$self->next_token if $has_parenthesis;
 		my $args_list = $self->parse_syntax_args_list;
+		$self->assert_step_token_val( symbol => ')' ) if $has_parenthesis;
 		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
 		push @statements, {
 			type => 'function_declaration_statement',

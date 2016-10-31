@@ -317,13 +317,12 @@ sub translate_syntax_expression {
 		
 	} elsif ($expression->{type} eq 'access_expression') {
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
-		return { type => 'identifier_expression', identifier => $expression->{identifier}, expression => $sub_expression, var_type => '*' }
+		return { type => 'access_expression', identifier => $expression->{identifier}, expression => $sub_expression, var_type => '*' }
 
 	} elsif ($expression->{type} eq 'expressive_access_expression') {
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
 		my $access_expression = $self->translate_syntax_expression($expression->{access_expression});
-		return { type => 'identifier_expression', identifier => $expression->{identifier}, expression => $sub_expression,
-				access_expression => $access_expression, var_type => '*' }
+		return { type => 'expressive_access_expression', expression => $sub_expression, access_expression => $access_expression, var_type => '*' }
 		
 	} elsif ($expression->{type} eq 'function_call_expression') {
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});

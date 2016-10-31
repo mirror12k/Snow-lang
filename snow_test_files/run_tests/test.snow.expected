@@ -25,3 +25,4 @@ got arg:	nil
 got arg:	5
 testarg2:	5	4
 testarg2:	5	nil
+t:	5	15	-20	nil

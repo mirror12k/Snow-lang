@@ -215,17 +215,25 @@ sub translate_syntax_statement {
 
 	} elsif ($statement->{type} eq 'foreach_statement') {
 		$self->push_snow_loop_labels;
+		my $expression_type;
+		$expression_type = $statement->{typehint} if defined $statement->{typehint};
+		my $expression = $self->translate_syntax_expression($statement->{expression});
+		$expression_type = $expression->{var_type} unless defined $expression_type;
+
+		die "ambigious foreach expression" unless defined $expression_type;
+		die "invalid var type in foreach expression: '$expression_type'" unless $expression_type eq '@' or $expression_type eq '%';
+
 		my @statements = ({
 			type => 'iter_statement',
-			names_list => [qw/ k v /],
+			names_list => ($expression_type eq '@' ? [qw/ i v /] : [qw/ k v /]),
 			expression_list => [{
 				type => 'function_call_expression',
-				expression => { type => 'identifier_expression', identifier => 'pairs' },
-				args_list => [ $self->translate_syntax_expression($statement->{expression}) ],
+				expression => { type => 'identifier_expression', identifier => ($expression_type eq '@' ? 'ipairs' : 'pairs') },
+				args_list => [ $expression ],
 			}],
 			block => [
 				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
-				$self->translate_syntax_block($statement->{block}, { k => '$', v => '*' }),
+				$self->translate_syntax_block($statement->{block}, ($expression_type eq '@' ? { i => '#', v => '*' } : { k => '$', v => '*' })),
 				{ type => 'label_statement', identifier => $self->{snow_next_label} },
 			],
 		});
@@ -389,10 +397,18 @@ sub translate_syntax_expression {
 		}
 		
 	} elsif ($expression->{type} eq 'table_expression') {
+		my $var_type = '*';
+		if (@{$expression->{table_fields}}) {
+			if ($expression->{table_fields}[0]{type} eq 'array_field') {
+				$var_type = '@';
+			} else {
+				$var_type = '%';
+			}
+		}
 		return {
 			type => 'table_expression',
 			table_fields => [ map $self->translate_syntax_table_field($_), @{$expression->{table_fields}} ],
-			var_type => '%',
+			var_type => $var_type,
 		}
 		
 	# } elsif ($expression->{type} eq 'function_expression') {

@@ -172,10 +172,13 @@ sub parse_syntax_statements {
 
 	} elsif ($self->is_token_val( keyword => 'foreach' )) {
 		$self->next_token;
+		my $typehint;
+		$typehint = $self->next_token->[1] if $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' );
 		my $expression = $self->parse_syntax_expression;
 		my $statement = {
 			type => 'foreach_statement',
 			expression => $expression,
+			typehint => $typehint,
 			block => $self->parse_syntax_block("$whitespace_prefix\t"),
 		};
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
@@ -550,6 +553,7 @@ my %snow_syntax_default_variable_identifiers = (
 	'?' => 'b',
 	'#' => 'n',
 	'$' => 's',
+	'@' => 'a',
 	'%' => 't',
 	'&' => 'f',
 	'*' => 'x',
@@ -564,7 +568,7 @@ sub parse_syntax_args_list {
 	my $is_named;
 	while (
 			$self->is_token_val(symbol => '?') or $self->is_token_val(symbol => '#') or $self->is_token_val(symbol => '$')
-			or $self->is_token_val(symbol => '%') or $self->is_token_val(symbol => '&') or $self->is_token_val(symbol => '*')
+			or $self->is_token_val(symbol => '@') or $self->is_token_val(symbol => '%') or $self->is_token_val(symbol => '&') or $self->is_token_val(symbol => '*')
 			or $self->is_token_type('identifier')
 		) {
 		my $type;

@@ -112,3 +112,9 @@ foreach [
 	]
 	print k, v
 
+foreach [ 5, 4, 3 ]
+	print i, v
+
+foreach @[ foo => 'bar' ]
+	print i, v
+

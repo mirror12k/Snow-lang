@@ -170,6 +170,20 @@ sub parse_syntax_statements {
 		}
 		push @statements, $statement;
 
+	} elsif ($self->is_token_val( keyword => 'foreach' )) {
+		$self->next_token;
+		my $expression = $self->parse_syntax_expression;
+		my $statement = {
+			type => 'foreach_statement',
+			expression => $expression,
+			block => $self->parse_syntax_block("$whitespace_prefix\t"),
+		};
+		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
+			$self->next_token;
+			$statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
+		}
+		push @statements, $statement;
+
 	} elsif ($self->is_token_val( keyword => 'if' ) or $self->is_token_val( keyword => 'unless' )) {
 		my $invert = $self->next_token->[1] eq 'unless';
 		my $expression = $self->parse_syntax_expression;

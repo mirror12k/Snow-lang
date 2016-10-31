@@ -73,3 +73,11 @@ local %t = [
 
 for #i = 1,5
 	print i
+
+
+foreach [
+		a => 5,
+		b => 4,
+		c => 3,
+	]
+	print k, v

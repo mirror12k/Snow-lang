@@ -213,6 +213,30 @@ sub translate_syntax_statement {
 
 		return @statements
 
+	} elsif ($statement->{type} eq 'foreach_statement') {
+		$self->push_snow_loop_labels;
+		my @statements = ({
+			type => 'iter_statement',
+			names_list => [qw/ k v /],
+			expression_list => [{
+				type => 'function_call_expression',
+				expression => { type => 'identifier_expression', identifier => 'pairs' },
+				args_list => [ $self->translate_syntax_expression($statement->{expression}) ],
+			}],
+			block => [
+				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
+				$self->translate_syntax_block($statement->{block}, { k => '$', v => '*' }),
+				{ type => 'label_statement', identifier => $self->{snow_next_label} },
+			],
+		});
+		if (defined $statement->{branch}) {
+			push @statements, { type => 'block_statement', block => [ $self->translate_syntax_block($statement->{branch}{block}) ] }
+		}
+		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} };
+		$self->pop_snow_loop_labels;
+
+		return @statements
+
 	} elsif ($statement->{type} eq 'variable_declaration_statement') {
 		# TODO: verify assignment types
 		$self->register_locals(@{$statement->{names_list}});

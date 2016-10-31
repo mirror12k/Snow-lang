@@ -60,3 +60,14 @@ function argtest3 #num, $string
 	print 'argtest2', num
 function parenargtest (num, tab, str)
 	print 'this is parenargtest'
+
+
+local %t = [5,4,3]
+local %t = [ a => 15, b => 17 ]
+local %t = [ a + b => 15, b => 17 ]
+local %t = [
+	asdf => false,
+	qwerty => true,
+	zxcv => nil,
+]
+

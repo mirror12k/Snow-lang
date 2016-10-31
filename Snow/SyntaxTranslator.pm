@@ -344,6 +344,13 @@ sub translate_syntax_expression {
 			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
 		}
 		
+	} elsif ($expression->{type} eq 'table_expression') {
+		return {
+			type => 'table_expression',
+			table_fields => [ map $self->translate_syntax_table_field($_), @{$expression->{table_fields}} ],
+			var_type => '%',
+		}
+		
 	# } elsif ($expression->{type} eq 'function_expression') {
 	# 	return {
 	# 		type => 'function_expression',
@@ -363,6 +370,30 @@ sub translate_syntax_expression_list {
 	return map $self->translate_syntax_expression($_), @$expression_list
 }
 
+
+sub translate_syntax_table_field {
+	my ($self, $table_field) = @_;
+	if ($table_field->{type} eq 'array_field') {
+		return {
+			type => 'array_field',
+			expression => $self->translate_syntax_expression($table_field->{expression}),
+		}
+	} elsif ($table_field->{type} eq 'identifier_field') {
+		return {
+			type => 'identifier_field',
+			identifier => $table_field->{identifier},
+			expression => $self->translate_syntax_expression($table_field->{expression}),
+		}
+	} elsif ($table_field->{type} eq 'expressive_field') {
+		return {
+			type => 'expressive_field',
+			key_expression => $self->translate_syntax_expression($table_field->{key_expression}),
+			expression => $self->translate_syntax_expression($table_field->{expression}),
+		}
+	} else {
+		die "unimplemented table field type $table_field->{type}";
+	}
+}
 
 
 

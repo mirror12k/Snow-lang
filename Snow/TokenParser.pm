@@ -66,6 +66,7 @@ our @snow_keywords = qw/
 /;
 
 our @snow_syntax_tokens = (qw#
+	=>
 	<=
 	>=
 	<
@@ -81,6 +82,8 @@ our @snow_syntax_tokens = (qw#
 	.
 	(
 	)
+	[
+	]
 	=
 	?
 	$
@@ -193,13 +196,15 @@ sub is_token_val {
 
 sub assert_token_type {
 	my ($self, $type, $offset) = @_;
-	$self->confess_at_current_offset ("expected token type $type" . (defined $offset ? " (at offset $offset)" : ''))
+	$self->confess_at_current_offset ("expected token type $type" . (defined $offset ? " (at offset $offset)" : '')
+			. " instead got token type $self->{code_tokens}[$self->{code_tokens_index}][0] with value $self->{code_tokens}[$self->{code_tokens_index}][1]")
 		unless $self->is_token_type($type, $offset);
 }
 
 sub assert_token_val {
 	my ($self, $type, $val, $offset) = @_;
-	$self->confess_at_current_offset ("expected token type $type with value '$val'" . (defined $offset ? " (at offset $offset)" : ''))
+	$self->confess_at_current_offset ("expected token type $type with value '$val'" . (defined $offset ? " (at offset $offset)" : '')
+			. " instead got token type $self->{code_tokens}[$self->{code_tokens_index}][0] with value $self->{code_tokens}[$self->{code_tokens_index}][1]")
 		unless $self->is_token_val($type, $val, $offset);
 }
 

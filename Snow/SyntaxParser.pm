@@ -276,6 +276,12 @@ sub parse_syntax_expression {
 		$self->next_token;
 		$expression = { type => 'vararg_expression' };
 
+	} elsif ($self->is_token_val( symbol => '[' )) {
+		$self->next_token;
+		my $table_constructor = $self->parse_syntax_table_constructor;
+		$self->assert_step_token_val( symbol => ']' );
+		return $table_constructor
+
 	} elsif (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $snow_syntax_unary_operations_hash{$self->peek_token->[1]}) {
 		my $operation = $self->next_token->[1];
 		$expression = {
@@ -435,7 +441,7 @@ sub parse_syntax_function_args_list {
 		$self->assert_step_token_val( symbol => ')' );
 	} else {
 		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' ) or $self->is_token_type( 'identifier' )
-				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
+				or $self->is_token_val( symbol => '[' ) or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
 				or $self->is_token_val( keyword => ':' )
 			) {
@@ -459,6 +465,43 @@ sub parse_syntax_expression_list {
 	}
 
 	return @expression_list
+}
+
+sub parse_syntax_table_constructor {
+	my ($self) = @_;
+
+	my $is_hash_table;
+	my @table_fields;
+	$self->skip_whitespace_tokens;
+	until ($self->is_token_val( symbol => ']' )) {
+		my $expression = $self->parse_syntax_expression;
+		$is_hash_table = $is_hash_table // $self->is_token_val( symbol => '=>' );
+		if ($is_hash_table) {
+			$self->assert_step_token_val( symbol => '=>' );
+			my $val_expression = $self->parse_syntax_expression;
+
+			if ($expression->{type} eq 'identifier_expression') {
+				push @table_fields, { type => 'identifier_field', identifier => $expression->{identifier}, expression => $val_expression };
+			} else {
+				push @table_fields, { type => 'expressive_field', key_expression => $expression, expression => $val_expression };
+			}
+		} else {
+			push @table_fields, { type => 'array_field', expression => $expression };
+		}
+
+		if ($self->is_token_val( symbol => ',' )) {
+			$self->next_token;
+		} else {
+			last
+		}
+		$self->skip_whitespace_tokens;
+	}
+	$self->skip_whitespace_tokens;
+
+	return {
+		type => 'table_expression',
+		table_fields => \@table_fields,
+	}
 }
 
 

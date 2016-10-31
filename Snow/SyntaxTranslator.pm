@@ -33,13 +33,12 @@ sub parse {
 	my ($self, $text) = @_;
 	$self->SUPER::parse($text);
 
-	$self->{variables_stack} = [];
-	$self->{variables_defined} = {
-		print => '&',
-	};
 	$self->{globals_defined} = {
 		print => '&',
+		type => '&',
 	};
+	$self->{variables_stack} = [];
+	$self->{variables_defined} = { %{$self->{globals_defined}} };
 
 	$self->{syntax_tree} = [ $self->translate_syntax_block($self->{syntax_tree}) ];
 
@@ -181,6 +180,28 @@ sub translate_syntax_statement {
 			block => [
 				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
 				$self->translate_syntax_block($statement->{block}),
+				{ type => 'label_statement', identifier => $self->{snow_next_label} },
+			],
+		});
+		if (defined $statement->{branch}) {
+			push @statements, { type => 'block_statement', block => [ $self->translate_syntax_block($statement->{branch}{block}) ] }
+		}
+		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} };
+		$self->pop_snow_loop_labels;
+
+		return @statements
+
+	} elsif ($statement->{type} eq 'for_statement') {
+		$self->push_snow_loop_labels;
+		my @statements = ({
+			type => 'for_statement',
+			identifier => $statement->{identifier},
+			expression_start => $self->translate_syntax_expression($statement->{start_expression}),
+			expression_end => $self->translate_syntax_expression($statement->{end_expression}),
+			expression_step => ( defined $statement->{step_expression} ? $self->translate_syntax_expression($statement->{step_expression}) : undef ),
+			block => [
+				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
+				$self->translate_syntax_block($statement->{block}, { $statement->{identifier} => '#' }),
 				{ type => 'label_statement', identifier => $self->{snow_next_label} },
 			],
 		});

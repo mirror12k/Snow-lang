@@ -55,6 +55,8 @@ our @snow_keywords = qw/
 	else
 	if
 	unless
+	for
+	foreach
 
 	nil
 	true

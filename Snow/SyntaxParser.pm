@@ -143,6 +143,33 @@ sub parse_syntax_statements {
 		}
 		push @statements, $statement;
 
+	} elsif ($self->is_token_val( keyword => 'for' )) {
+		$self->next_token;
+		$self->assert_step_token_val( symbol => '#' );
+		my $identifier = $self->assert_step_token_type( 'identifier' )->[1];
+		$self->assert_step_token_val( symbol => '=' );
+		my $start_expression = $self->parse_syntax_expression;
+		$self->assert_step_token_val( symbol => ',' );
+		my $end_expression = $self->parse_syntax_expression;
+		my $step_expression;
+		if ($self->is_token_val( symbol => ',' )) {
+			$self->next_token;
+			$step_expression = $self->parse_syntax_expression;
+		}
+		my $statement = {
+			type => 'for_statement',
+			identifier => $identifier,
+			start_expression => $start_expression,
+			end_expression => $end_expression,
+			step_expression => $step_expression,
+			block => $self->parse_syntax_block("$whitespace_prefix\t"),
+		};
+		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
+			$self->next_token;
+			$statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
+		}
+		push @statements, $statement;
+
 	} elsif ($self->is_token_val( keyword => 'if' ) or $self->is_token_val( keyword => 'unless' )) {
 		my $invert = $self->next_token->[1] eq 'unless';
 		my $expression = $self->parse_syntax_expression;
@@ -470,13 +497,13 @@ sub parse_syntax_expression_list {
 sub parse_syntax_table_constructor {
 	my ($self) = @_;
 
-	my $is_hash_table;
+	my $is_assoc_table;
 	my @table_fields;
 	$self->skip_whitespace_tokens;
 	until ($self->is_token_val( symbol => ']' )) {
 		my $expression = $self->parse_syntax_expression;
-		$is_hash_table = $is_hash_table // $self->is_token_val( symbol => '=>' );
-		if ($is_hash_table) {
+		$is_assoc_table = $is_assoc_table // $self->is_token_val( symbol => '=>' );
+		if ($is_assoc_table) {
 			$self->assert_step_token_val( symbol => '=>' );
 			my $val_expression = $self->parse_syntax_expression;
 

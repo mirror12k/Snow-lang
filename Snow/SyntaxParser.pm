@@ -366,6 +366,7 @@ our @snow_syntax_binary_operations = qw#
 	&
 	<<
 	>>
+	..
 	+
 	-
 	*
@@ -453,29 +454,28 @@ sub parse_syntax_names_list {
 
 	my @names_list;
 
-	$self->confess_at_current_offset("variable type expected") unless
-		$self->is_token_val( symbol => '?' )
-		or $self->is_token_val( symbol => '#' )
-		or $self->is_token_val( symbol => '$' )
-		or $self->is_token_val( symbol => '&' )
-		or $self->is_token_val( symbol => '@' )
-		or $self->is_token_val( symbol => '%' )
-		or $self->is_token_val( symbol => '*' );
-	my $type = $self->next_token->[1];
+	my $type;
+	if ($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
+		or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
+		or $self->is_token_val( symbol => '*' )) {
+		$type = $self->next_token->[1];
+	} else {
+		$type = '*';
+	}
+
 	push @names_list, $type . $self->assert_step_token_type('identifier')->[1];
 
 	while ($self->is_token_val( symbol => ',' )) {
 		$self->next_token;
 		$self->skip_whitespace_tokens;
-		$self->confess_at_current_offset("variable type expected") unless
-			$self->is_token_val( symbol => '?' )
-			or $self->is_token_val( symbol => '#' )
-			or $self->is_token_val( symbol => '$' )
-			or $self->is_token_val( symbol => '&' )
-			or $self->is_token_val( symbol => '@' )
-			or $self->is_token_val( symbol => '%' )
-			or $self->is_token_val( symbol => '*' );
-		my $type = $self->next_token->[1];
+		my $type;
+		if ($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
+			or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
+			or $self->is_token_val( symbol => '*' )) {
+			$type = $self->next_token->[1];
+		} else {
+			$type = '*';
+		}
 		push @names_list, $type . $self->assert_step_token_type('identifier')->[1];
 	}
 

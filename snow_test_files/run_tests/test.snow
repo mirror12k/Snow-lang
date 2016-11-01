@@ -177,3 +177,19 @@ foo = ... {
 foo('asdf')
 foo()
 foo(15, 17)
+
+
+local a, b = 5, 4
+print b, a
+print 'test expression: ' .. a .. b
+print 'test expression: ' .. (a + b)
+print 'test expression: ' .. (a - b)
+print 'test expression: ' .. (a * b)
+print 'test expression: ' .. (a / b)
+print 'test expression: ' .. tostring(a == b)
+print 'test expression: ' .. tostring(a ~= b)
+print 'test expression: ' .. tostring(a <= b)
+print 'test expression: ' .. tostring(a >= b)
+print 'test expression: ' .. tostring(a < b)
+print 'test expression: ' .. tostring(a > b)
+

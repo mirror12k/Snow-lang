@@ -36,6 +36,7 @@ sub parse {
 	$self->{globals_defined} = {
 		print => '&',
 		type => '&',
+		tostring => '&',
 	};
 	$self->{variables_stack} = [];
 	$self->{variables_defined} = { %{$self->{globals_defined}} };
@@ -342,10 +343,9 @@ sub translate_syntax_expression {
 	} elsif ($expression->{type} eq 'binary_expression') {
 		my $var_type;
 		my $check_type;
-		if ($expression->{operation} eq '+') {
-			# TODO implement dynamic translation to concatenation
-			$var_type = '#';
-		} elsif ($expression->{operation} eq '-' or $expression->{operation} eq '*' or $expression->{operation} eq '/') {
+		if ($expression->{operation} eq '..') {
+			$var_type = '$';
+		} elsif ($expression->{operation} eq '+' or $expression->{operation} eq '-' or $expression->{operation} eq '*' or $expression->{operation} eq '/') {
 			$var_type = '#';
 		} elsif ($expression->{operation} eq '==' or$expression->{operation} eq '~=' or $expression->{operation} eq '>'
 				or $expression->{operation} eq '<' or $expression->{operation} eq '>=' or $expression->{operation} eq '<=') {

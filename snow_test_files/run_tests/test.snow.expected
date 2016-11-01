@@ -56,3 +56,15 @@ got stuff:	cow	lol
 got varargs:	asdf
 got varargs:
 got varargs:	15	17
+4	5
+test expression: 54
+test expression: 9
+test expression: 1
+test expression: 20
+test expression: 1.25
+test expression: false
+test expression: true
+test expression: false
+test expression: true
+test expression: false
+test expression: true

@@ -51,3 +51,5 @@ got flag
 got vararg:	4	3
 got vararg:
 got vararg:	nil
+got anon args:	asdf	15
+got stuff:	cow	lol

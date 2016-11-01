@@ -161,3 +161,12 @@ va(5, 4, 3)
 va()
 va(nil, nil)
 
+($#{
+	print 'got anon args:', s, n
+	})('asdf', 15)
+
+foo = $asdf, $qwerty {
+	print 'got stuff:', qwerty, asdf
+}
+foo('lol', 'cow')
+

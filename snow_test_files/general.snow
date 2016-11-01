@@ -92,3 +92,10 @@ local &f = {
 }
 
 f()
+
+f = $# {
+	print s, n
+}
+
+function testfun $$...
+	print 'test'

@@ -316,3 +316,13 @@ snow language spec draft v0.2
 	in order to explicitly use a variable as a key, explicit variable specifiers are used:
 		[ $key_var => val ]
 
+
+	string slicing or char selecting:
+		slice, c = str[5:6], str[2]
+
+	single expression anon functions:
+			f = { 5 + n }
+		equals
+			f = # {
+				return 5 + n
+			}

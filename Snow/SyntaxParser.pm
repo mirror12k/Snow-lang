@@ -326,6 +326,13 @@ sub parse_syntax_expression {
 		$self->assert_step_token_val( symbol => ']' );
 		return $table_constructor
 
+		
+	} elsif ($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
+		or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
+		or $self->is_token_val( symbol => '*' )) {
+		my $function_expression = $self->parse_syntax_function_expression;
+		return $function_expression
+
 	} elsif ($self->is_token_val( symbol => '{' )) {
 		my $function_expression = $self->parse_syntax_function_expression;
 		return $function_expression
@@ -634,6 +641,14 @@ sub parse_syntax_args_list {
 
 sub parse_syntax_function_expression {
 	my ($self) = @_;
+
+	my $args_list = [];
+	if ($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
+		or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
+		or $self->is_token_val( symbol => '*' )) {
+		$args_list = $self->parse_syntax_args_list;
+	}
+
 	$self->assert_step_token_val( symbol => '{' );
 	my $block = [];
 	if ($self->is_token_type( 'whitespace' )) {
@@ -644,7 +659,7 @@ sub parse_syntax_function_expression {
 	$self->assert_step_token_val( symbol => '}' );
 	return {
 		type => 'function_expression',
-		args_list => [],
+		args_list => $args_list,
 		block => $block,
 	}
 }

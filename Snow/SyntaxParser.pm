@@ -491,7 +491,7 @@ sub parse_syntax_function_args_list {
 		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' ) or $self->is_token_type( 'identifier' )
 				or $self->is_token_val( symbol => '[' ) or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
-				or $self->is_token_val( keyword => ':' )
+				or $self->is_token_val( keyword => ':' ) or $self->is_token_val( symbol => '...' )
 			) {
 			@args_list = $self->parse_syntax_expression_list;
 		}
@@ -573,8 +573,15 @@ sub parse_syntax_args_list {
 	while (
 			$self->is_token_val(symbol => '?') or $self->is_token_val(symbol => '#') or $self->is_token_val(symbol => '$')
 			or $self->is_token_val(symbol => '@') or $self->is_token_val(symbol => '%') or $self->is_token_val(symbol => '&') or $self->is_token_val(symbol => '*')
-			or $self->is_token_type('identifier')
+			or $self->is_token_type('identifier') or $self->is_token_val( symbol => '...' )
 		) {
+
+		if ($self->is_token_val( symbol => '...' )) {
+			$self->next_token;
+			push @args_list, '...';
+			return \@args_list
+		}
+
 		my $type;
 		my $identifier;
 		if ($self->is_token_type('identifier')) {

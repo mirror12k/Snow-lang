@@ -153,3 +153,11 @@ foo()
 flag = true
 foo()
 print (({})())
+
+function va v, ...
+	print 'got vararg:', ...
+
+va(5, 4, 3)
+va()
+va(nil, nil)
+

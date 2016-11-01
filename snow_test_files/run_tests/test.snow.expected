@@ -48,3 +48,6 @@ no flag
 this is foo
 got flag
 
+got vararg:	4	3
+got vararg:
+got vararg:	nil

@@ -284,8 +284,9 @@ sub translate_syntax_statement {
 			var_list => [ { type => 'identifier_expression', identifier => $statement->{identifier} } ],
 			expression_list => [ {
 				type => 'function_expression',
-				args_list => [ map { substr $_, 1 } @{$statement->{args_list}} ],
-				block => [ $self->translate_syntax_block($statement->{block}, { map { substr ($_, 1) => substr ($_, 0, 1) } @{$statement->{args_list}} }) ],
+				args_list => [ map { $_ eq '...' ? $_ : substr $_, 1 } @{$statement->{args_list}} ],
+				block => [ $self->translate_syntax_block($statement->{block},
+						{ map { substr ($_, 1) => substr ($_, 0, 1) } grep $_ ne '...', @{$statement->{args_list}} }) ],
 			} ],
 		}
 

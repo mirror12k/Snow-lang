@@ -326,6 +326,10 @@ sub parse_syntax_expression {
 		$self->assert_step_token_val( symbol => ']' );
 		return $table_constructor
 
+	} elsif ($self->is_token_val( symbol => '{' )) {
+		my $function_expression = $self->parse_syntax_function_expression;
+		return $function_expression
+
 	} elsif (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $snow_syntax_unary_operations_hash{$self->peek_token->[1]}) {
 		my $operation = $self->next_token->[1];
 		$expression = {
@@ -617,6 +621,25 @@ sub parse_syntax_args_list {
 	}
 
 	return \@args_list
+}
+
+
+
+sub parse_syntax_function_expression {
+	my ($self) = @_;
+	$self->assert_step_token_val( symbol => '{' );
+	my $block = [];
+	if ($self->is_token_type( 'whitespace' )) {
+		my $prefix = $self->peek_token->[1] =~ s/^.*\n([^\n]*)$/$1/rs;
+		$block = $self->parse_syntax_block($prefix);
+	}
+	$self->skip_whitespace_tokens;
+	$self->assert_step_token_val( symbol => '}' );
+	return {
+		type => 'function_expression',
+		args_list => [],
+		block => $block,
+	}
 }
 
 

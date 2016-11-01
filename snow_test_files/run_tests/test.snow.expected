@@ -39,3 +39,12 @@ aaa	5
 1	5
 2	4
 3	3
+1	dangerous
+search result:	3
+c not found!
+search result:	nil
+this is foo
+no flag
+this is foo
+got flag
+

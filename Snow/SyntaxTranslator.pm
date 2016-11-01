@@ -411,13 +411,13 @@ sub translate_syntax_expression {
 			var_type => $var_type,
 		}
 		
-	# } elsif ($expression->{type} eq 'function_expression') {
-	# 	return {
-	# 		type => 'function_expression',
-	# 		args_list => $expression->{args_list},
-	# 		block => [ $self->translate_syntax_block($expression->{block}) ],
-	# 		var_type => '&',
-	# 	}
+	} elsif ($expression->{type} eq 'function_expression') {
+		return {
+			type => 'function_expression',
+			args_list => [ map { substr $_, 1 } @{$expression->{args_list}} ],
+			block => [ $self->translate_syntax_block($expression->{block}, { map { substr ($_, 1) => substr ($_, 0, 1) } @{$expression->{args_list}} }) ],
+			var_type => '&',
+		}
 
 	} else {
 		die "unimplemented expression in translation $expression->{type}";

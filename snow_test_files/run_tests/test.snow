@@ -118,3 +118,38 @@ foreach [ 5, 4, 3 ]
 foreach @[ foo => 'bar' ]
 	print i, v
 
+foreach %['dangerous']
+	print k, v
+
+local #index
+foreach [ 'a', 'b', 'c' ]
+	if v == 'c'
+		index = i
+		last
+else
+	print 'c not found!'
+print 'search result:', index
+
+local #index
+foreach [ 'd', 'e', 'f' ]
+	if v == 'c'
+		index = i
+		last
+else
+	print 'c not found!'
+print 'search result:', index
+
+
+local ?flag = false
+local &foo = {
+	print 'this is foo'
+	if flag
+		print 'got flag'
+	else
+		print 'no flag'
+}
+
+foo()
+flag = true
+foo()
+print (({})())

@@ -86,6 +86,8 @@ our @snow_syntax_tokens = (qw#
 	)
 	[
 	]
+	{
+	}
 	=
 	?
 	$

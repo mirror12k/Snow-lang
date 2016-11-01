@@ -81,3 +81,14 @@ foreach [
 		c => 3,
 	]
 	print k, v
+
+
+local &f = {
+	if true
+		print 'hi'
+	else
+		print 'bye'
+	print 'done with f'
+}
+
+f()

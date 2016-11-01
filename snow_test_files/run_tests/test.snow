@@ -170,3 +170,10 @@ foo = $asdf, $qwerty {
 }
 foo('lol', 'cow')
 
+foo = ... {
+	print 'got varargs:', ...
+}
+
+foo('asdf')
+foo()
+foo(15, 17)

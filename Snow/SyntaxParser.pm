@@ -316,6 +316,13 @@ sub parse_syntax_expression {
 		}
 		$expression = { type => 'string_constant', value => $value };
 
+	} elsif ($self->is_token_val( symbol => '{' )
+		or $self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
+		or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
+		or $self->is_token_val( symbol => '*' ) or ($self->is_token_val( symbol => '...' ) and $self->is_token_val( symbol => '{', 1 ))) {
+		my $function_expression = $self->parse_syntax_function_expression;
+		return $function_expression
+
 	} elsif ($self->is_token_val( symbol => '...' )) {
 		$self->next_token;
 		$expression = { type => 'vararg_expression' };
@@ -325,17 +332,6 @@ sub parse_syntax_expression {
 		my $table_constructor = $self->parse_syntax_table_constructor;
 		$self->assert_step_token_val( symbol => ']' );
 		return $table_constructor
-
-		
-	} elsif ($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
-		or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
-		or $self->is_token_val( symbol => '*' )) {
-		my $function_expression = $self->parse_syntax_function_expression;
-		return $function_expression
-
-	} elsif ($self->is_token_val( symbol => '{' )) {
-		my $function_expression = $self->parse_syntax_function_expression;
-		return $function_expression
 
 	} elsif (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $snow_syntax_unary_operations_hash{$self->peek_token->[1]}) {
 		my $operation = $self->next_token->[1];
@@ -645,7 +641,7 @@ sub parse_syntax_function_expression {
 	my $args_list = [];
 	if ($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
 		or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
-		or $self->is_token_val( symbol => '*' )) {
+		or $self->is_token_val( symbol => '*' ) or $self->is_token_val( symbol => '...' )) {
 		$args_list = $self->parse_syntax_args_list;
 	}
 

@@ -53,3 +53,6 @@ got vararg:
 got vararg:	nil
 got anon args:	asdf	15
 got stuff:	cow	lol
+got varargs:	asdf
+got varargs:
+got varargs:	15	17

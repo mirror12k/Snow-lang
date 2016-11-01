@@ -99,3 +99,7 @@ f = $# {
 
 function testfun $$...
 	print 'test'
+
+f = ... {
+	print 'my args:', ...
+}

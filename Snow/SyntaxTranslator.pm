@@ -89,7 +89,14 @@ sub register_locals {
 		$self->{variables_defined}{$identifier} = $type;
 	}
 }
-
+sub exists_var {
+	my ($self, $identifier) = @_;
+	return 1 if exists $self->{variables_defined}{$identifier};
+	foreach my $vars (reverse @{$self->{variables_stack}}) {
+		return 1 if exists $vars->{$identifier};
+	}
+	return 0
+}
 sub get_var_type {
 	my ($self, $identifier) = @_;
 	return $self->{variables_defined}{$identifier} if exists $self->{variables_defined}{$identifier};
@@ -279,8 +286,15 @@ sub translate_syntax_statement {
 		}
 
 	} elsif ($statement->{type} eq 'function_declaration_statement') {
-		$self->register_globals("\&$statement->{identifier}");
-		return {
+		my @pre_statements;
+		if ($statement->{is_local}) {
+			$self->register_locals("\&$statement->{identifier}");
+			push @pre_statements, { type => 'variable_declaration_statement', names_list => [ $statement->{identifier} ] };
+		} else {
+			$self->register_globals("\&$statement->{identifier}") unless $self->exists_var($statement->{identifier});
+		}
+		return @pre_statements,
+			{
 			type => 'assignment_statement',
 			var_list => [ { type => 'identifier_expression', identifier => $statement->{identifier} } ],
 			expression_list => [ {

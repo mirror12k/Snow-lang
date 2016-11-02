@@ -206,7 +206,9 @@ sub parse_syntax_statements {
 		}
 		push @statements, $statement;
 
-	} elsif ($self->is_token_val( keyword => 'function' )) {
+	} elsif ($self->is_token_val( keyword => 'function' ) or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'function', 1 ))) {
+		my $is_local = $self->is_token_val( keyword => 'local' );
+		$self->next_token if $is_local;
 		$self->next_token;
 		my $identifier = $self->assert_step_token_type('identifier')->[1];
 		my $has_parenthesis = $self->is_token_val( symbol => '(' );
@@ -219,6 +221,7 @@ sub parse_syntax_statements {
 			args_list => $args_list,
 			identifier => $identifier,
 			block => $block,
+			is_local => $is_local,
 		};
 		
 
@@ -417,7 +420,6 @@ sub parse_syntax_prefix_expression {
 	}
 
 	while (1) {
-		# say "debug: ", join ', ', $self->is_token_val( symbol => ':' ), $self->is_token_type( 'identifier', 1 );
 		if ($self->is_token_val( symbol => '.' )) {
 			$self->next_token;
 			my $identifier = $self->assert_step_token_type('identifier')->[1];
@@ -616,11 +618,7 @@ sub parse_syntax_args_list {
 			} else {
 				if ($var_map{$type} == 1) {
 					my $search = "$type$snow_syntax_default_variable_identifiers{$type}";
-					@args_list = map {
-						$_ eq $search ?
-							"${_}1" :
-							$_
-					} @args_list;
+					@args_list = map { $_ eq $search ? "${_}1" : $_ } @args_list;
 				}
 				$var_map{$type}++;
 				$identifier = "$snow_syntax_default_variable_identifiers{$type}$var_map{$type}";

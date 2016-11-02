@@ -68,3 +68,5 @@ test expression: false
 test expression: true
 test expression: false
 test expression: true
+test
+got varargs:

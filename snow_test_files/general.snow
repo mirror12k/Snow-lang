@@ -104,3 +104,8 @@ f = ... {
 	print 'my args:', ...
 }
 
+do
+	local function f
+		print 'test'
+	f()
+f()

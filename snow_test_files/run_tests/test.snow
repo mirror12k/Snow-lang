@@ -193,3 +193,8 @@ print 'test expression: ' .. tostring(a >= b)
 print 'test expression: ' .. tostring(a < b)
 print 'test expression: ' .. tostring(a > b)
 
+do
+	local function foo
+		print 'test'
+	foo()
+foo()

@@ -663,6 +663,15 @@ sub parse_syntax_function_expression {
 	if ($self->is_token_type( 'whitespace' )) {
 		my $prefix = $self->peek_token->[1] =~ s/^.*\n([^\n]*)$/$1/rs;
 		$block = $self->parse_syntax_block($prefix);
+	} elsif ($self->is_token_val( symbol => '}' )) {
+		# do nothing
+	} else {
+		my $expression_list = [ $self->parse_syntax_expression_list ];
+
+		push @$block, {
+			type => 'return_statement',
+			expression_list => $expression_list,
+		};
 	}
 	$self->skip_whitespace_tokens;
 	$self->assert_step_token_val( symbol => '}' );

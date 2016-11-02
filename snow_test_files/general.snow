@@ -116,3 +116,7 @@ function rettest
 function rettest2
 	print 'hey'
 	return
+
+f = ##{ n1+n2 }
+print f(5,7)
+

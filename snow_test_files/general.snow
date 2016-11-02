@@ -125,3 +125,7 @@ local n = 5
 ++n
 --n
 
+print "my n: $n!"
+print ""
+
+

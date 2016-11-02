@@ -101,6 +101,44 @@ sub is_far_next_token {
 	}
 }
 
+
+sub parse_syntax_string_constant {
+	my ($self, $string) = @_;
+	my $expression;
+	while ($string =~ /^(.*?)\$($Snow::TokenParser::snow_identifier_regex)(.*)$/s) {
+		if ($1 ne '') {
+			my $sub_expression = { type => 'string_constant', value => $1 };
+			$expression = defined $expression ? {
+				type => 'binary_expression',
+				operation => '..',
+				expression_left => $expression,
+				expression_right => $sub_expression,
+			} : $sub_expression;
+		}
+		my $sub_expression = { type => 'identifier_expression', identifier => $2 };
+		$expression = defined $expression ? {
+			type => 'binary_expression',
+			operation => '..',
+			expression_left => $expression,
+			expression_right => $sub_expression,
+		} : $sub_expression;
+		$string = $3;
+	}
+	if ($string ne '') {
+		my $sub_expression = { type => 'string_constant', value => $string };
+		$expression = defined $expression ? {
+			type => 'binary_expression',
+			operation => '..',
+			expression_left => $expression,
+			expression_right => $sub_expression,
+		} : $sub_expression;
+	} elsif (not defined $expression and $string eq '') {
+		$expression = { type => 'string_constant', value => '' };
+	}
+
+	return $expression
+}
+
 sub parse_syntax_statements {
 	my ($self, $whitespace_prefix) = @_;
 
@@ -365,7 +403,7 @@ sub parse_syntax_expression {
 		} else {
 			die "invalid literal_string value $value" unless $value =~ s/^\[(=*)\[(.*)\]\1\]$/$2/s;
 		}
-		$expression = { type => 'string_constant', value => $value };
+		$expression = $self->parse_syntax_string_constant($value);
 
 	} elsif ($self->is_token_val( symbol => '{' )
 		or $self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )

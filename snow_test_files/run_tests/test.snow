@@ -242,3 +242,9 @@ n--
 print n
 
 
+
+local $s, $ending = 'hello world', '!'
+print "$s"
+print "$s$ending"
+print "my introduction: '$s'$ending"
+

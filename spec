@@ -46,9 +46,10 @@ snow language spec draft v0.2
 			global %world_table
 
 	string interpolation into double-quoted strings indicated by their specific type declaration:
+		local ?is_ded, #mynum, $mystring
 		print "i have a string: $mystring"
-		print "i have a number #mynum"
-		print "i have a bool: ?is_ded"
+		print "i have a number $mynum"
+		print "i have a bool: $is_ded"
 
 		print "i have a value: @a[5], @a[i]"
 		print "i have a value: %self.value"

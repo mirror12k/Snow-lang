@@ -261,6 +261,13 @@ sub translate_syntax_statement {
 			names_list => [ map { substr $_, 1 } @{$statement->{names_list}} ],
 			expression_list => ( defined $statement->{expression_list} ? [ $self->translate_syntax_expression_list($statement->{expression_list}) ] : undef ),
 		}
+
+	} elsif ($statement->{type} eq 'return_statement') {
+		return {
+			type => 'return_statement',
+			expression_list => [ $self->translate_syntax_expression_list($statement->{expression_list}) ],
+		}
+
 	} elsif ($statement->{type} eq 'global_declaration_statement') {
 		# TODO: verify assignment types
 		$self->register_globals(@{$statement->{names_list}});

@@ -37,8 +37,13 @@ sub parse_syntax_block {
 
 	my @block;
 	my $line_number = $self->current_line_number;
+	my $has_return = 0;
 	# say "parse_syntax_block: '$whitespace_prefix'";
 	while (my @statements = $self->parse_syntax_statements($whitespace_prefix)) {
+		foreach my $statement (@statements) {
+			die "statements found after return on line $line_number" if $has_return;
+			$has_return = 1 if $statement->{type} eq 'return_statement';
+		}
 		push @block, map { $_->{line_number} = $line_number; $_ } @statements;
 		$line_number = $self->current_line_number;
 	}
@@ -205,6 +210,16 @@ sub parse_syntax_statements {
 			$branch_statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		}
 		push @statements, $statement;
+
+	} elsif ($self->is_token_val( keyword => 'return' )) {
+		$self->next_token;
+		my $expression_list = [];
+		$expression_list = [ $self->parse_syntax_expression_list ] if $self->more_tokens and not $self->is_token_type( 'whitespace' );
+
+		push @statements, {
+			type => 'return_statement',
+			expression_list => $expression_list,
+		};
 
 	} elsif ($self->is_token_val( keyword => 'function' ) or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'function', 1 ))) {
 		my $is_local = $self->is_token_val( keyword => 'local' );

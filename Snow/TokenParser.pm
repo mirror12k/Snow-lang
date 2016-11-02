@@ -47,7 +47,8 @@ our @snow_keywords = qw/
 	method
 	local
 	global
-
+	
+	return
 	do
 	while
 	until

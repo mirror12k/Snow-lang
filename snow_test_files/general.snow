@@ -109,3 +109,10 @@ do
 		print 'test'
 	f()
 f()
+
+function rettest
+	return 5, print 'hey'
+
+function rettest2
+	print 'hey'
+	return

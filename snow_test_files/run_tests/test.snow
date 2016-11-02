@@ -198,3 +198,23 @@ do
 		print 'test'
 	foo()
 foo()
+
+do
+	local &foo
+	function foo
+		print 'test'
+foo()
+
+
+function rettest
+	return 5, 15
+print rettest()
+
+function rettest #
+	return n, n+10, print n
+print rettest(25)
+
+function rettest
+	return
+print rettest()
+

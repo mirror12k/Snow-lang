@@ -70,3 +70,8 @@ test expression: false
 test expression: true
 test
 got varargs:
+got varargs:
+5	15
+25
+25	35
+

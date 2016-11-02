@@ -286,10 +286,49 @@ sub translate_syntax_statement {
 
 	} elsif ($statement->{type} eq 'assignment_statement') {
 		# TODO: verify assignment types
+		my @var_list = $self->translate_syntax_expression_list($statement->{var_list});
+		my @expression_list = $self->translate_syntax_expression_list($statement->{expression_list});
+		if ($statement->{assignment_type} ne '=') {
+			my $operation = $statement->{assignment_type} =~ s/^(.*)=$/$1/r;
+			foreach my $i (0 .. $#expression_list) {
+				$expression_list[$i] = {
+					type => 'binary_expression',
+					operation => $operation,
+					expression_left => $var_list[$i],
+					expression_right => $expression_list[$i],
+				}
+			}
+		}
 		return {
 			type => 'assignment_statement',
-			var_list => [ $self->translate_syntax_expression_list($statement->{var_list}) ],
-			expression_list => [ $self->translate_syntax_expression_list($statement->{expression_list}) ],
+			var_list => \@var_list,
+			expression_list => \@expression_list,
+		}
+
+	} elsif ($statement->{type} eq 'increment_statement') {
+		my $expression = $self->translate_syntax_expression($statement->{expression});
+		return {
+			type => 'assignment_statement',
+			var_list => [ $expression ],
+			expression_list => [{
+				type => 'binary_expression',
+				operation => '+',
+				expression_left => $expression,
+				expression_right => { type => 'numeric_constant', value => 1 },
+			}],
+		}
+
+	} elsif ($statement->{type} eq 'decrement_statement') {
+		my $expression = $self->translate_syntax_expression($statement->{expression});
+		return {
+			type => 'assignment_statement',
+			var_list => [ $expression ],
+			expression_list => [{
+				type => 'binary_expression',
+				operation => '-',
+				expression_left => $expression,
+				expression_right => { type => 'numeric_constant', value => 1 },
+			}],
 		}
 
 	} elsif ($statement->{type} eq 'function_declaration_statement') {

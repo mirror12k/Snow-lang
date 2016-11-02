@@ -47,7 +47,7 @@ our @snow_keywords = qw/
 	method
 	local
 	global
-	
+
 	return
 	do
 	while
@@ -76,6 +76,14 @@ our @snow_syntax_tokens = (qw#
 	>
 	==
 	~=
+	++
+	--
+	+=
+	-=
+	*=
+	/=
+	..=
+	
 	...
 	..
 	+

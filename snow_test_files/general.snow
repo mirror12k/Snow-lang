@@ -120,3 +120,8 @@ function rettest2
 f = ##{ n1+n2 }
 print f(5,7)
 
+local n = 5
+++n
+++n
+--n
+

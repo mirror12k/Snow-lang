@@ -270,6 +270,17 @@ sub parse_syntax_statements {
 			expression_list => $expression_list,
 		};
 
+	} elsif ($self->is_token_val( symbol => '++' )) {
+		$self->next_token;
+		my $prefix_expression = $self->parse_syntax_prefix_expression;
+		push @statements, { type => 'increment_statement', expression => $prefix_expression };
+
+	} elsif ($self->is_token_val( symbol => '--' )) {
+		$self->next_token;
+		my $prefix_expression = $self->parse_syntax_prefix_expression;
+		push @statements, { type => 'decrement_statement', expression => $prefix_expression };
+
+
 	} elsif ($self->is_token_val( symbol => '(' ) or $self->is_token_type( 'identifier' )) {
 		my $prefix_expression = $self->parse_syntax_prefix_expression;
 		if ($prefix_expression->{type} eq 'function_call_expression' or $prefix_expression->{type} eq 'method_call_expression') {
@@ -286,8 +297,30 @@ sub parse_syntax_statements {
 						or $prefix_expression->{type} eq 'expressive_access_expression';
 				push @var_list, $prefix_expression;
 			}
-			$self->assert_step_token_val( symbol => '=' );
-			push @statements, { type => 'assignment_statement', var_list => \@var_list, expression_list => [ $self->parse_syntax_expression_list ] };
+			if ($self->is_token_val( symbol => '+=' ) or $self->is_token_val( symbol => '-=' ) or $self->is_token_val( symbol => '*=' )
+				or $self->is_token_val( symbol => '/=' ) or $self->is_token_val( symbol => '..=' ) or $self->is_token_val( symbol => '=' )) {
+				my $assignment_type = $self->next_token->[1];
+				my $expression_list = [ $self->parse_syntax_expression_list ];
+				if ($assignment_type ne '=' and @$expression_list != @var_list) {
+					die "unequal number of variables and expressions for referencial assignment";
+				}
+				push @statements, {
+					type => 'assignment_statement',
+					assignment_type => $assignment_type,
+					var_list => \@var_list,
+					expression_list => $expression_list,
+				};
+			} elsif ($self->is_token_val( symbol => '++' )) {
+				$self->next_token;
+				die "increment statement requires only one variable" unless @var_list == 1;
+				push @statements, { type => 'increment_statement', expression => $var_list[0] };
+			} elsif ($self->is_token_val( symbol => '--' )) {
+				$self->next_token;
+				die "increment statement requires only one variable" unless @var_list == 1;
+				push @statements, { type => 'decrement_statement', expression => $var_list[0] };
+			} else {
+				$self->confess_at_current_offset("expected some assignment token ('=')");
+			}
 		} else {
 			$self->confess_at_current_offset("unexpected prefix expression '$prefix_expression->{type}' (function call or variable assignment exected)");
 		}

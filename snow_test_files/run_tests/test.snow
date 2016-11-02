@@ -224,3 +224,21 @@ foo = ##{ n1+n2 }
 print foo(5,7), foo(15, 15), foo(20, -15)
 print ((${ 'hello world: ' .. s .. '!' })('short'))
 
+
+local n = 5
+n += 3
+print n
+n -= 4
+print n
+n *= 5
+print n
+n /= 10
+print n
+++n
+n++
+print n
+--n
+n--
+print n
+
+

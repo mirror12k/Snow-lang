@@ -32,7 +32,8 @@ my $file = shift // die "file required";
 # say $parser->dump_syntax;
 
 
-my $parser = Snow::SyntaxTranslator->new(file => $file);
+my $parser = Snow::SyntaxTranslator->new(filepath => $file);
+$parser->parse;
 my $stringer = Snow::Lua::SyntaxStringer->new;
 say $stringer->to_string($parser->{syntax_tree});
 

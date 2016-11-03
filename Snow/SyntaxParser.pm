@@ -85,18 +85,18 @@ sub skip_whitespace_tokens {
 sub is_far_next_token {
 	my ($self, $type, $val, $whitespace_prefix) = @_;
 
-	my $index = $self->{code_tokens_index};
+	my $index = $self->{tokens_index};
 	# say "debug $index, '$whitespace_prefix'";
 	if ($self->parse_syntax_whitespace($whitespace_prefix)) {
 		# say "debug whitespace parsed";
 		if ($self->is_token_val($type => $val)) {
 			return 1
 		} else {
-			$self->{code_tokens_index} = $index;
+			$self->{tokens_index} = $index;
 			return 0
 		}
 	} else {
-		$self->{code_tokens_index} = $index;
+		$self->{tokens_index} = $index;
 		return 0
 	}
 }

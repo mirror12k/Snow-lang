@@ -22,6 +22,9 @@ sub new {
 	$self->{snow_last_label} = undef;
 	$self->{snow_next_label} = undef;
 	$self->{snow_redo_label} = undef;
+	$self->{snow_last_label_usage_count} = undef;
+	$self->{snow_next_label_usage_count} = undef;
+	$self->{snow_redo_label_usage_count} = undef;
 
 	return $self
 }
@@ -54,19 +57,22 @@ sub new_snow_label {
 
 sub push_snow_loop_labels {
 	my ($self) = @_;
-	push @{$self->{snow_last_label_stack}}, $self->{snow_last_label};
+	push @{$self->{snow_last_label_stack}}, [ $self->{snow_last_label}, $self->{snow_last_label_usage_count} ];
 	$self->{snow_last_label} = $self->new_snow_label('last');
-	push @{$self->{snow_next_label_stack}}, $self->{snow_next_label};
+	$self->{snow_last_label_usage_count} = 0;
+	push @{$self->{snow_next_label_stack}}, [ $self->{snow_next_label}, $self->{snow_next_label_usage_count} ];
 	$self->{snow_next_label} = $self->new_snow_label('next');
-	push @{$self->{snow_redo_label_stack}}, $self->{snow_redo_label};
+	$self->{snow_next_label_usage_count} = 0;
+	push @{$self->{snow_redo_label_stack}}, [ $self->{snow_redo_label}, $self->{snow_redo_label_usage_count} ];
 	$self->{snow_redo_label} = $self->new_snow_label('redo');
+	$self->{snow_redo_label_usage_count} = 0;
 }
 
 sub pop_snow_loop_labels {
 	my ($self) = @_;
-	$self->{snow_last_label} = pop @{$self->{snow_last_label_stack}};
-	$self->{snow_next_label} = pop @{$self->{snow_next_label_stack}};
-	$self->{snow_redo_label} = pop @{$self->{snow_redo_label_stack}};
+	($self->{snow_last_label}, $self->{snow_last_label_usage_count}) = @{ pop @{$self->{snow_last_label_stack}} };
+	($self->{snow_next_label}, $self->{snow_next_label_usage_count}) = @{ pop @{$self->{snow_next_label_stack}} };
+	($self->{snow_redo_label}, $self->{snow_redo_label_usage_count}) = @{ pop @{$self->{snow_redo_label_stack}} };
 }
 
 sub register_globals {
@@ -145,14 +151,17 @@ sub translate_syntax_statement {
 
 	} elsif ($statement->{type} eq 'last_statement') {
 		die "last used outside of a loop" unless defined $self->{snow_last_label};
+		$self->{snow_last_label_usage_count}++;
 		return { type => 'goto_statement', identifier => $self->{snow_last_label} }
 
 	} elsif ($statement->{type} eq 'next_statement') {
 		die "next used outside of a loop" unless defined $self->{snow_next_label};
+		$self->{snow_next_label_usage_count}++;
 		return { type => 'goto_statement', identifier => $self->{snow_next_label} }
 
 	} elsif ($statement->{type} eq 'redo_statement') {
 		die "redo used outside of a loop" unless defined $self->{snow_redo_label};
+		$self->{snow_redo_label_usage_count}++;
 		return { type => 'goto_statement', identifier => $self->{snow_redo_label} }
 
 	} elsif ($statement->{type} eq 'block_statement') {
@@ -182,41 +191,39 @@ sub translate_syntax_statement {
 
 	} elsif ($statement->{type} eq 'while_statement') {
 		$self->push_snow_loop_labels;
+		my @block = $self->translate_syntax_block($statement->{block});
+		unshift @block, { type => 'label_statement', identifier => $self->{snow_redo_label} } if $self->{snow_redo_label_usage_count};
+		push @block, { type => 'label_statement', identifier => $self->{snow_next_label} } if $self->{snow_next_label_usage_count};
 		my @statements = ({
 			type => 'while_statement',
 			expression => $self->translate_syntax_expression($statement->{expression}),
-			block => [
-				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
-				$self->translate_syntax_block($statement->{block}),
-				{ type => 'label_statement', identifier => $self->{snow_next_label} },
-			],
+			block => \@block,
 		});
 		if (defined $statement->{branch}) {
 			push @statements, { type => 'block_statement', block => [ $self->translate_syntax_block($statement->{branch}{block}) ] }
 		}
-		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} };
+		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} } if $self->{snow_last_label_usage_count};
 		$self->pop_snow_loop_labels;
 
 		return @statements
 
 	} elsif ($statement->{type} eq 'for_statement') {
 		$self->push_snow_loop_labels;
+		my @block = $self->translate_syntax_block($statement->{block}, { $statement->{identifier} => '#' });
+		unshift @block, { type => 'label_statement', identifier => $self->{snow_redo_label} } if $self->{snow_redo_label_usage_count};
+		push @block, { type => 'label_statement', identifier => $self->{snow_next_label} } if $self->{snow_next_label_usage_count};
 		my @statements = ({
 			type => 'for_statement',
 			identifier => $statement->{identifier},
 			expression_start => $self->translate_syntax_expression($statement->{start_expression}),
 			expression_end => $self->translate_syntax_expression($statement->{end_expression}),
 			expression_step => ( defined $statement->{step_expression} ? $self->translate_syntax_expression($statement->{step_expression}) : undef ),
-			block => [
-				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
-				$self->translate_syntax_block($statement->{block}, { $statement->{identifier} => '#' }),
-				{ type => 'label_statement', identifier => $self->{snow_next_label} },
-			],
+			block => \@block,
 		});
 		if (defined $statement->{branch}) {
 			push @statements, { type => 'block_statement', block => [ $self->translate_syntax_block($statement->{branch}{block}) ] }
 		}
-		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} };
+		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} } if $self->{snow_last_label_usage_count};
 		$self->pop_snow_loop_labels;
 
 		return @statements
@@ -231,6 +238,9 @@ sub translate_syntax_statement {
 		die "ambigious foreach expression" unless defined $expression_type;
 		die "invalid var type in foreach expression: '$expression_type'" unless $expression_type eq '@' or $expression_type eq '%';
 
+		my @block = $self->translate_syntax_block($statement->{block}, ($expression_type eq '@' ? { i => '#', v => '*' } : { k => '$', v => '*' }));
+		unshift @block, { type => 'label_statement', identifier => $self->{snow_redo_label} } if $self->{snow_redo_label_usage_count};
+		push @block, { type => 'label_statement', identifier => $self->{snow_next_label} } if $self->{snow_next_label_usage_count};
 		my @statements = ({
 			type => 'iter_statement',
 			names_list => ($expression_type eq '@' ? [qw/ i v /] : [qw/ k v /]),
@@ -239,16 +249,12 @@ sub translate_syntax_statement {
 				expression => { type => 'identifier_expression', identifier => ($expression_type eq '@' ? 'ipairs' : 'pairs') },
 				args_list => [ $expression ],
 			}],
-			block => [
-				{ type => 'label_statement', identifier => $self->{snow_redo_label} },
-				$self->translate_syntax_block($statement->{block}, ($expression_type eq '@' ? { i => '#', v => '*' } : { k => '$', v => '*' })),
-				{ type => 'label_statement', identifier => $self->{snow_next_label} },
-			],
+			block => \@block,
 		});
 		if (defined $statement->{branch}) {
 			push @statements, { type => 'block_statement', block => [ $self->translate_syntax_block($statement->{branch}{block}) ] }
 		}
-		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} };
+		push @statements, { type => 'label_statement', identifier => $self->{snow_last_label} } if $self->{snow_last_label_usage_count};
 		$self->pop_snow_loop_labels;
 
 		return @statements

@@ -139,6 +139,14 @@ sub parse_syntax_string_constant {
 	return $expression
 }
 
+sub assert_next_whitespace {
+	my ($self, $msg) = @_;
+	if ($self->more_tokens and not $self->is_token_type('whitespace')) {
+		my ($type, $token) = @{$self->next_token};
+		$self->confess_at_current_offset("expected whitespace after $msg, instead got $type token '$token'");
+	}
+}
+
 sub parse_syntax_statements {
 	my ($self, $whitespace_prefix) = @_;
 
@@ -159,29 +167,37 @@ sub parse_syntax_statements {
 
 	} elsif ($self->is_token_val( keyword => 'break' )) {
 		$self->next_token;
+		$self->assert_next_whitespace("break statement");
 		push @statements, { type => 'break_statement' };
 	} elsif ($self->is_token_val( keyword => 'next' )) {
 		$self->next_token;
+		$self->assert_next_whitespace("next statement");
 		push @statements, { type => 'next_statement' };
 	} elsif ($self->is_token_val( keyword => 'redo' )) {
 		$self->next_token;
+		$self->assert_next_whitespace("redo statement");
 		push @statements, { type => 'redo_statement' };
 	} elsif ($self->is_token_val( keyword => 'last' )) {
 		$self->next_token;
+		$self->assert_next_whitespace("last statement");
 		push @statements, { type => 'last_statement' };
 
 	} elsif ($self->is_token_val( keyword => 'do' )) {
 		$self->next_token;
+		$self->assert_next_whitespace("do statement");
 		push @statements, { type => 'block_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 
 	} elsif ($self->is_token_val( keyword => 'while' ) or $self->is_token_val( keyword => 'until' )) {
-		my $invert = $self->next_token->[1] eq 'until';
+		my $statement_type = $self->next_token->[1];
+		my $invert = $statement_type eq 'until';
 		my $expression = $self->parse_syntax_expression;
 		$expression = { type => 'unary_expression', operation => 'not', expression => { type => 'parenthesis_expression', expression => $expression } }
 			if $invert;
+		$self->assert_next_whitespace("$statement_type statement");
 		my $statement = { type => 'while_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
 			$self->next_token;
+			$self->assert_next_whitespace("else statement");
 			$statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		}
 		push @statements, $statement;
@@ -199,6 +215,7 @@ sub parse_syntax_statements {
 			$self->next_token;
 			$step_expression = $self->parse_syntax_expression;
 		}
+		$self->assert_next_whitespace("for statement");
 		my $statement = {
 			type => 'for_statement',
 			identifier => $identifier,
@@ -209,6 +226,7 @@ sub parse_syntax_statements {
 		};
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
 			$self->next_token;
+			$self->assert_next_whitespace("else statement");
 			$statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		}
 		push @statements, $statement;
@@ -218,6 +236,7 @@ sub parse_syntax_statements {
 		my $typehint;
 		$typehint = $self->next_token->[1] if $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' );
 		my $expression = $self->parse_syntax_expression;
+		$self->assert_next_whitespace("foreach statement");
 		my $statement = {
 			type => 'foreach_statement',
 			expression => $expression,
@@ -226,6 +245,7 @@ sub parse_syntax_statements {
 		};
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
 			$self->next_token;
+			$self->assert_next_whitespace("else statement");
 			$statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		}
 		push @statements, $statement;
@@ -235,16 +255,19 @@ sub parse_syntax_statements {
 		my $expression = $self->parse_syntax_expression;
 		$expression = { type => 'unary_expression', operation => 'not', expression => { type => 'parenthesis_expression', expression => $expression } }
 			if $invert;
+		$self->assert_next_whitespace("if statement");
 		my $statement = { type => 'if_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		my $branch_statement = $statement;
 		while ($self->is_far_next_token(keyword => 'elseif', $whitespace_prefix)) {
 			$self->next_token;
 			$expression = $self->parse_syntax_expression;
+			$self->assert_next_whitespace("elseif statement");
 			$branch_statement->{branch} = { type => 'elseif_statement', expression => $expression, block => $self->parse_syntax_block("$whitespace_prefix\t") };
 			$branch_statement = $branch_statement->{branch};
 		}
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {
 			$self->next_token;
+			$self->assert_next_whitespace("else statement");
 			$branch_statement->{branch} = { type => 'else_statement', block => $self->parse_syntax_block("$whitespace_prefix\t") };
 		}
 		push @statements, $statement;
@@ -254,6 +277,7 @@ sub parse_syntax_statements {
 		my $expression_list = [];
 		$expression_list = [ $self->parse_syntax_expression_list ] if $self->more_tokens and not $self->is_token_type( 'whitespace' );
 
+		$self->assert_next_whitespace("return statement");
 		push @statements, {
 			type => 'return_statement',
 			expression_list => $expression_list,
@@ -265,16 +289,16 @@ sub parse_syntax_statements {
 		) {
 		my $is_local = $self->is_token_val( keyword => 'local' );
 		$self->next_token if $is_local;
-		my $is_method = $self->is_token_val( keyword => 'method' );
-		$self->next_token;
+		my $statement_type = $self->next_token->[1];
 		my $identifier = $self->assert_step_token_type('identifier')->[1];
 		my $has_parenthesis = $self->is_token_val( symbol => '(' );
 		$self->next_token if $has_parenthesis;
 		my $args_list = $self->parse_syntax_args_list;
 		my @initializations = grep ref $_, @$args_list;
 		@$args_list = map { ref $_ ? $_->[0] : $_ } @$args_list;
-		unshift @$args_list, "%self" if $is_method;
+		unshift @$args_list, "%self" if $statement_type eq 'method';
 		$self->assert_step_token_val( symbol => ')' ) if $has_parenthesis;
+		$self->assert_next_whitespace("$statement_type declaration statement");
 		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
 		if (@initializations) {
 			unshift @$block, {
@@ -302,6 +326,7 @@ sub parse_syntax_statements {
 			$expression_list = [ $self->parse_syntax_expression_list ];
 		}
 
+		$self->assert_next_whitespace("local declaration statement");
 		push @statements, {
 			type => 'variable_declaration_statement',
 			names_list => $names_list,
@@ -317,6 +342,7 @@ sub parse_syntax_statements {
 			$expression_list = [ $self->parse_syntax_expression_list ];
 		}
 
+		$self->assert_next_whitespace("global declaration statement");
 		push @statements, {
 			type => 'global_declaration_statement',
 			names_list => $names_list,
@@ -326,17 +352,20 @@ sub parse_syntax_statements {
 	} elsif ($self->is_token_val( symbol => '++' )) {
 		$self->next_token;
 		my $prefix_expression = $self->parse_syntax_prefix_expression;
+		$self->assert_next_whitespace("increment statement");
 		push @statements, { type => 'increment_statement', expression => $prefix_expression };
 
 	} elsif ($self->is_token_val( symbol => '--' )) {
 		$self->next_token;
 		my $prefix_expression = $self->parse_syntax_prefix_expression;
+		$self->assert_next_whitespace("decrement statement");
 		push @statements, { type => 'decrement_statement', expression => $prefix_expression };
 
 
 	} elsif ($self->is_token_val( symbol => '(' ) or $self->is_token_type( 'identifier' )) {
 		my $prefix_expression = $self->parse_syntax_prefix_expression;
 		if ($prefix_expression->{type} eq 'function_call_expression' or $prefix_expression->{type} eq 'method_call_expression') {
+			$self->assert_next_whitespace("call statement");
 			push @statements, { type => 'call_statement', expression => $prefix_expression };
 		} elsif ($prefix_expression->{type} eq 'identifier_expression' or $prefix_expression->{type} eq 'access_expression'
 				or $prefix_expression->{type} eq 'expressive_access_expression') {
@@ -358,6 +387,7 @@ sub parse_syntax_statements {
 				if ($assignment_type ne '=' and @$expression_list != @var_list) {
 					die "unequal number of variables and expressions for referencial assignment";
 				}
+				$self->assert_next_whitespace("assignment statement");
 				push @statements, {
 					type => 'assignment_statement',
 					assignment_type => $assignment_type,
@@ -367,10 +397,12 @@ sub parse_syntax_statements {
 			} elsif ($self->is_token_val( symbol => '++' )) {
 				$self->next_token;
 				die "increment statement requires only one variable" unless @var_list == 1;
+				$self->assert_next_whitespace("increment statement");
 				push @statements, { type => 'increment_statement', expression => $var_list[0] };
 			} elsif ($self->is_token_val( symbol => '--' )) {
 				$self->next_token;
-				die "increment statement requires only one variable" unless @var_list == 1;
+				die "decrement statement requires only one variable" unless @var_list == 1;
+				$self->assert_next_whitespace("decrement statement");
 				push @statements, { type => 'decrement_statement', expression => $var_list[0] };
 			} else {
 				$self->confess_at_current_offset("expected some assignment token ('=')");

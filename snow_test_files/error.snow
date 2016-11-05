@@ -1,0 +1,5 @@
+
+
+do
+	local asdf
+	print 'hello world'

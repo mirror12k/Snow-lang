@@ -116,7 +116,7 @@ sub new {
 
 sub filter_tokens {
 	my ($self, @tokens) = @_;
-	return grep { $_->[0] ne 'whitespace' or $_->[1] =~ /\n/ } @tokens;
+	return ['whitespace', "\n", 0, 0], grep { $_->[0] ne 'whitespace' or $_->[1] =~ /\n/ } @tokens;
 }
 
 

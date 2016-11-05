@@ -1,5 +1,4 @@
-
-local
+print 'test'
 
 do
 	local asdf

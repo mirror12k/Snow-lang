@@ -1,0 +1,4 @@
+print 'first line!'
+// this is a regression test
+// a previous compiler issue refused to have statements on the first line due to a lack of whitespace to verify
+print 'last line!'

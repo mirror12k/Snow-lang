@@ -40,6 +40,12 @@ sub parse {
 		print => '&',
 		type => '&',
 		tostring => '&',
+		require => '&',
+
+		coroutine => '%',
+		string => '%',
+		table => '%',
+		math => '%',
 	};
 	$self->{variables_stack} = [];
 	$self->{variables_defined} = { %{$self->{globals_defined}} };
@@ -383,7 +389,7 @@ sub translate_syntax_expression {
 		return { type => 'string_constant', value => $expression->{value}, var_type => '$' }
 
 	} elsif ($expression->{type} eq 'vararg_expression') {
-		return $expression
+		return { type => 'vararg_expression', var_type => '*' }
 
 	} elsif ($expression->{type} eq 'parenthesis_expression') {
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
@@ -414,6 +420,8 @@ sub translate_syntax_expression {
 			$var_type = '$';
 		} elsif ($expression->{operation} eq '+' or $expression->{operation} eq '-' or $expression->{operation} eq '*' or $expression->{operation} eq '/') {
 			$var_type = '#';
+		} elsif ($expression->{operation} eq 'or' or $expression->{operation} eq 'and') {
+			$var_type = '?';
 		} elsif ($expression->{operation} eq '==' or$expression->{operation} eq '~=' or $expression->{operation} eq '>'
 				or $expression->{operation} eq '<' or $expression->{operation} eq '>=' or $expression->{operation} eq '<=') {
 			$var_type = '?';
@@ -452,6 +460,7 @@ sub translate_syntax_expression {
 			type => 'function_call_expression',
 			expression => $sub_expression,
 			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
+			var_type => '*',
 		}
 		
 	} elsif ($expression->{type} eq 'method_call_expression') {
@@ -462,6 +471,7 @@ sub translate_syntax_expression {
 			identifier => $expression->{identifier},
 			expression => $sub_expression,
 			args_list => [ $self->translate_syntax_expression_list($expression->{args_list}) ],
+			var_type => '*',
 		}
 		
 	} elsif ($expression->{type} eq 'table_expression') {

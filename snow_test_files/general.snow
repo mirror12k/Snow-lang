@@ -129,3 +129,7 @@ print "my n: $n!"
 print ""
 
 
+
+method test
+	print self.msg
+

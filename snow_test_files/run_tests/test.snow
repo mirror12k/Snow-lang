@@ -248,3 +248,7 @@ print "$s"
 print "$s$ending"
 print "my introduction: '$s'$ending"
 
+method my_method
+	print "my message: " .. self.msg
+
+my_method ([ msg => 'hello world' ])

@@ -259,14 +259,19 @@ sub parse_syntax_statements {
 			expression_list => $expression_list,
 		};
 
-	} elsif ($self->is_token_val( keyword => 'function' ) or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'function', 1 ))) {
+	} elsif ($self->is_token_val( keyword => 'function' ) or $self->is_token_val( keyword => 'method' )
+			or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'function', 1 ))
+			or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'method', 1 ))
+		) {
 		my $is_local = $self->is_token_val( keyword => 'local' );
 		$self->next_token if $is_local;
+		my $is_method = $self->is_token_val( keyword => 'method' );
 		$self->next_token;
 		my $identifier = $self->assert_step_token_type('identifier')->[1];
 		my $has_parenthesis = $self->is_token_val( symbol => '(' );
 		$self->next_token if $has_parenthesis;
 		my $args_list = $self->parse_syntax_args_list;
+		unshift @$args_list, "%self" if $is_method;
 		$self->assert_step_token_val( symbol => ')' ) if $has_parenthesis;
 		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
 		push @statements, {

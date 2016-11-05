@@ -271,9 +271,19 @@ sub parse_syntax_statements {
 		my $has_parenthesis = $self->is_token_val( symbol => '(' );
 		$self->next_token if $has_parenthesis;
 		my $args_list = $self->parse_syntax_args_list;
+		my @initializations = grep ref $_, @$args_list;
+		@$args_list = map { ref $_ ? $_->[0] : $_ } @$args_list;
 		unshift @$args_list, "%self" if $is_method;
 		$self->assert_step_token_val( symbol => ')' ) if $has_parenthesis;
 		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
+		if (@initializations) {
+			unshift @$block, {
+				type => 'assignment_statement',
+				assignment_type => '?=',
+				var_list => [ map { type => 'identifier_expression', identifier => substr $_->[0], 1 }, @initializations ],
+				expression_list => [ map $_->[1], @initializations ],
+			};
+		}
 		push @statements, {
 			type => 'function_declaration_statement',
 			args_list => $args_list,
@@ -341,7 +351,8 @@ sub parse_syntax_statements {
 				push @var_list, $prefix_expression;
 			}
 			if ($self->is_token_val( symbol => '+=' ) or $self->is_token_val( symbol => '-=' ) or $self->is_token_val( symbol => '*=' )
-				or $self->is_token_val( symbol => '/=' ) or $self->is_token_val( symbol => '..=' ) or $self->is_token_val( symbol => '=' )) {
+				or $self->is_token_val( symbol => '/=' ) or $self->is_token_val( symbol => '..=' ) or $self->is_token_val( symbol => '?=' )
+				or $self->is_token_val( symbol => '=' )) {
 				my $assignment_type = $self->next_token->[1];
 				my $expression_list = [ $self->parse_syntax_expression_list ];
 				if ($assignment_type ne '=' and @$expression_list != @var_list) {
@@ -678,6 +689,8 @@ sub parse_syntax_args_list {
 			return \@args_list
 		}
 
+		my $arg;
+
 		my $type;
 		my $identifier;
 		if ($self->is_token_type('identifier')) {
@@ -693,10 +706,16 @@ sub parse_syntax_args_list {
 			die "attempt to mix named and default function arguments" if $is_named == 0;
 			$identifier = $self->next_token->[1];
 
+			$arg = "$type$identifier";
+			if ($self->is_token_val( symbol => '=' )) {
+				$self->next_token;
+				my $init_expression = $self->parse_syntax_expression;
+				$arg = [ $arg => $init_expression ];
+			}
 			if ($self->is_token_val( symbol => ',' )) {
 				$self->next_token;
 			} else {
-				push @args_list, "$type$identifier";
+				push @args_list, $arg;
 				last;
 			}
 		} else {
@@ -714,9 +733,10 @@ sub parse_syntax_args_list {
 				$var_map{$type}++;
 				$identifier = "$snow_syntax_default_variable_identifiers{$type}$var_map{$type}";
 			}
+			$arg = "$type$identifier";
 		}
 
-		push @args_list, "$type$identifier"
+		push @args_list, $arg
 	}
 
 	return \@args_list
@@ -751,6 +771,18 @@ sub parse_syntax_function_expression {
 	}
 	$self->skip_whitespace_tokens;
 	$self->assert_step_token_val( symbol => '}' );
+
+	my @initializations = grep ref $_, @$args_list;
+	@$args_list = map { ref $_ ? $_->[0] : $_ } @$args_list;
+	if (@initializations) {
+		unshift @$block, {
+			type => 'assignment_statement',
+			assignment_type => '?=',
+			var_list => [ map { type => 'identifier_expression', identifier => substr $_->[0], 1 }, @initializations ],
+			expression_list => [ map $_->[1], @initializations ],
+		};
+	}
+	
 	return {
 		type => 'function_expression',
 		args_list => $args_list,

@@ -133,3 +133,8 @@ print ""
 method test
 	print self.msg
 
+
+function optional_args1 a=5,b=0
+	print a, b
+	a *= 5 + 4
+

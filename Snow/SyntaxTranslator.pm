@@ -296,12 +296,13 @@ sub translate_syntax_statement {
 		my @expression_list = $self->translate_syntax_expression_list($statement->{expression_list});
 		if ($statement->{assignment_type} ne '=') {
 			my $operation = $statement->{assignment_type} =~ s/^(.*)=$/$1/r;
+			$operation = 'or' if $operation eq '?';
 			foreach my $i (0 .. $#expression_list) {
 				$expression_list[$i] = {
 					type => 'binary_expression',
 					operation => $operation,
 					expression_left => $var_list[$i],
-					expression_right => $expression_list[$i],
+					expression_right => { type => 'parenthesis_expression', expression => $expression_list[$i] },
 				}
 			}
 		}

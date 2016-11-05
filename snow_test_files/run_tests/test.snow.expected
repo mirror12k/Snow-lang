@@ -87,3 +87,8 @@ hello world
 hello world!
 my introduction: 'hello world'!
 my message: hello world
+got optional: 5
+got optional: 15
+got optional2: 1, hello world, 15
+got optional2: 2, hello world, test
+hello world!

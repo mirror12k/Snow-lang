@@ -252,3 +252,20 @@ method my_method
 	print "my message: " .. self.msg
 
 my_method ([ msg => 'hello world' ])
+
+
+function optional_args1 a=5
+	print "got optional: $a"
+
+optional_args1()
+optional_args1(15)
+
+function optional_args2 a, b='hello world', c=15
+	print "got optional2: $a, $b, $c"
+
+optional_args2(1)
+optional_args2(2, nil, 'test')
+
+foo = $a='hello',$b='world' { print "$a $b!" }
+
+foo()

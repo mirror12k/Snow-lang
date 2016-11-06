@@ -269,3 +269,7 @@ optional_args2(2, nil, 'test')
 foo = $a='hello',$b='world' { print "$a $b!" }
 
 foo()
+
+
+foreach _, item in [5,4,3]
+	print "my item: $item"

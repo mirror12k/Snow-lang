@@ -33,6 +33,7 @@ our @snow_keywords = qw/
 	unless
 	for
 	foreach
+	in
 
 	nil
 	true

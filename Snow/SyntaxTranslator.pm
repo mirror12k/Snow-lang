@@ -248,12 +248,17 @@ sub translate_syntax_statement {
 		die "ambigious foreach expression" unless defined $expression_type;
 		die "invalid var type in foreach expression: '$expression_type'" unless $expression_type eq '@' or $expression_type eq '%';
 
-		my @block = $self->translate_syntax_block($statement->{block}, ($expression_type eq '@' ? { i => '#', v => '*' } : { k => '$', v => '*' }));
+		my $names_list = $statement->{names_list} // ($expression_type eq '@' ? ['#i', '*v'] : ['$k', '*v']);
+		my $var_scope = { map { substr($_, 1) => substr($_, 0, 1) } @$names_list };
+		$names_list = [ map substr($_, 1), @$names_list ];
+		# say join ',', @$names_list;
+		# say join ',', keys %$var_scope;
+		my @block = $self->translate_syntax_block($statement->{block}, $var_scope);
 		unshift @block, { type => 'label_statement', identifier => $self->{snow_redo_label} } if $self->{snow_redo_label_usage_count};
 		push @block, { type => 'label_statement', identifier => $self->{snow_next_label} } if $self->{snow_next_label_usage_count};
 		my @statements = ({
 			type => 'iter_statement',
-			names_list => ($expression_type eq '@' ? [qw/ i v /] : [qw/ k v /]),
+			names_list => $names_list,
 			expression_list => [{
 				type => 'function_call_expression',
 				expression => { type => 'identifier_expression', identifier => ($expression_type eq '@' ? 'ipairs' : 'pairs') },

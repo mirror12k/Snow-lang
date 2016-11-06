@@ -246,6 +246,21 @@ sub parse_syntax_statements {
 	} elsif ($self->is_token_val( keyword => 'foreach' )) {
 		$self->next_token;
 		$self->assert_next_not_whitespace(expression => "foreach statement");
+
+		my $names_list;
+		# unfortunately we must perform this complex look-ahead to see if it is a foreach-in statement or just a foreach statement
+		if (
+			($self->is_token_type('identifier') and ($self->is_token_val( symbol => ',', 1 ) or $self->is_token_val( keyword => 'in', 1 )))
+			or (
+				($self->is_token_val( symbol => '?' ) or $self->is_token_val( symbol => '#' ) or $self->is_token_val( symbol => '$' )
+				or $self->is_token_val( symbol => '&' ) or $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' )
+				or $self->is_token_val( symbol => '*' ))
+				and $self->is_token_type('identifier', 1) and ($self->is_token_val( symbol => ',', 2 ) or $self->is_token_val( keyword => 'in', 2 ))
+			)) {
+			$names_list = [ $self->parse_syntax_names_list ];
+			$self->assert_step_token_val( keyword => 'in' );
+		}
+
 		my $typehint;
 		$typehint = $self->next_token->[1] if $self->is_token_val( symbol => '@' ) or $self->is_token_val( symbol => '%' );
 		my $expression = $self->parse_syntax_expression;
@@ -254,6 +269,7 @@ sub parse_syntax_statements {
 			type => 'foreach_statement',
 			expression => $expression,
 			typehint => $typehint,
+			names_list => $names_list,
 			block => $self->parse_syntax_block("$whitespace_prefix\t"),
 		};
 		if ($self->is_far_next_token(keyword => 'else', $whitespace_prefix)) {

@@ -41,11 +41,15 @@ sub parse {
 		type => '&',
 		tostring => '&',
 		require => '&',
+		select => '&',
 
+		_G => '%',
+		
 		coroutine => '%',
 		string => '%',
 		table => '%',
 		math => '%',
+		debug => '%',
 	};
 	$self->{variables_stack} = [];
 	$self->{variables_defined} = { %{$self->{globals_defined}} };

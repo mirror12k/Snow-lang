@@ -1,14 +1,12 @@
 
 
 
-snow language spec draft v0.2
+snow language spec draft v0.2.1
 	compiles straight to lua code
 	most syntax taken from lua
 
 
 
-	.. operator merged with +
-		(typed variables allow the compiler to discern the two)
 	self-referential operators
 		s += "_suffix"
 			becomes
@@ -222,6 +220,10 @@ snow language spec draft v0.2
 			foreach @blueprint.sections
 				// stuff
 
+		to allow nested foreach statements, you may specify your names list explicitly:
+			foreach _, section in @blueprint.sections
+				// stuff
+
 
 	array and table values are always interpreted as * values
 	array keys are always interpreted as #
@@ -319,7 +321,13 @@ snow language spec draft v0.2
 
 
 	string slicing or char selecting:
-		slice, c = str[5:6], str[2]
+			slice, c = str[5:6], str[2]
+			substr = str[1:]
+			head = str[:5]
+		equals
+			slice, c = string.sub(str, 5, 6), string.sub(str, 2, 2)
+			substr = string.sub(str, 1)
+			head = string.sub(str, 0, 5)
 
 	single expression anon functions:
 			f = { 5 + n }
@@ -327,3 +335,15 @@ snow language spec draft v0.2
 			f = # {
 				return 5 + n
 			}
+
+	expressive access expression should be reorganized as:
+		t.[asdf .. "qwerty"]
+	for syntactic sugar, the following values should be acceptable expressive access expressions without square brackets:
+			t."index_$index_num"
+			t.$foo
+			t#bar
+		are equal to in lua:
+			t["index_" .. $index_num]
+			t[foo]
+			t[bar]
+

@@ -273,3 +273,20 @@ foo()
 
 foreach _, item in [5,4,3]
 	print "my item: $item"
+
+
+local obj =:
+	a => 'asdf'
+	q => 'qwerty'
+	msg => 'hello world!'
+	method fun
+		print 'my message: ' .. self.msg
+
+
+print obj.a
+print obj.q
+obj:fun
+obj.msg = 'goodbye world!'
+obj:fun
+
+

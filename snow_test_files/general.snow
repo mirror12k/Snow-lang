@@ -141,3 +141,18 @@ function optional_args1 a=5,b=0
 
 foreach _, item in [5,4,3]
 	print "my item: $item"
+
+global class
+
+local t =:
+	a => 'asdf'
+	q => 'qwerty'
+	function test
+		print 'hello world'
+	method fun
+		if true
+			print 'hey'
+		else
+			print 'nope'
+	asdf => class 'asdf',:
+		val => 5

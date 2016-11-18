@@ -30,31 +30,6 @@ sub parse {
 }
 
 
-
-sub parse_syntax_block {
-	my ($self, $whitespace_prefix) = @_;
-	$whitespace_prefix = $whitespace_prefix // '';
-
-	my @block;
-	my $line_number = $self->current_line_number;
-	my $has_return = 0;
-	# say "parse_syntax_block: '$whitespace_prefix'";
-	while (my @statements = $self->parse_syntax_statements($whitespace_prefix)) {
-		foreach my $statement (@statements) {
-			die "statements found after return on line $line_number" if $has_return;
-			$has_return = 1 if $statement->{type} eq 'return_statement';
-		}
-		push @block, map { $_->{line_number} = $line_number; $_ } @statements;
-		$line_number = $self->current_line_number;
-	}
-	# my $statement = $self->parse_syntax_return_statement;
-	# push @block, $statement if defined $statement;
-
-
-	return \@block
-}
-
-
 sub parse_syntax_whitespace {
 	my ($self, $whitespace_prefix) = @_;
 
@@ -153,6 +128,34 @@ sub assert_next_not_whitespace {
 		my ($type, $token) = @{$self->next_token};
 		$self->confess_at_current_offset("expected $expected in $msg");
 	}
+}
+
+
+
+sub parse_syntax_block {
+	my ($self, $whitespace_prefix) = @_;
+	$whitespace_prefix = $whitespace_prefix // '';
+
+	my $last_whitespace_prefix = $self->{whitespace_prefix};
+	$self->{whitespace_prefix} = $whitespace_prefix;
+
+	my @block;
+	my $line_number = $self->current_line_number;
+	my $has_return = 0;
+	# say "parse_syntax_block: '$whitespace_prefix'";
+	while (my @statements = $self->parse_syntax_statements($whitespace_prefix)) {
+		foreach my $statement (@statements) {
+			die "statements found after return on line $line_number" if $has_return;
+			$has_return = 1 if $statement->{type} eq 'return_statement';
+		}
+		push @block, map { $_->{line_number} = $line_number; $_ } @statements;
+		$line_number = $self->current_line_number;
+	}
+	# my $statement = $self->parse_syntax_return_statement;
+	# push @block, $statement if defined $statement;
+
+	$self->{whitespace_prefix} = $last_whitespace_prefix;
+	return \@block
 }
 
 sub parse_syntax_statements {
@@ -318,35 +321,7 @@ sub parse_syntax_statements {
 			or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'function', 1 ))
 			or ($self->is_token_val( keyword => 'local' ) and $self->is_token_val( keyword => 'method', 1 ))
 		) {
-		my $is_local = $self->is_token_val( keyword => 'local' );
-		$self->next_token if $is_local;
-		my $statement_type = $self->next_token->[1];
-		$self->assert_next_not_whitespace(identifier => "$statement_type statement");
-		my $identifier = $self->assert_step_token_type('identifier')->[1];
-		my $has_parenthesis = $self->is_token_val( symbol => '(' );
-		$self->next_token if $has_parenthesis;
-		my $args_list = $self->parse_syntax_args_list;
-		my @initializations = grep ref $_, @$args_list;
-		@$args_list = map { ref $_ ? $_->[0] : $_ } @$args_list;
-		unshift @$args_list, "%self" if $statement_type eq 'method';
-		$self->assert_step_token_val( symbol => ')' ) if $has_parenthesis;
-		$self->assert_next_whitespace("$statement_type declaration statement");
-		my $block = $self->parse_syntax_block("$whitespace_prefix\t");
-		if (@initializations) {
-			unshift @$block, {
-				type => 'assignment_statement',
-				assignment_type => '?=',
-				var_list => [ map { type => 'identifier_expression', identifier => substr $_->[0], 1 }, @initializations ],
-				expression_list => [ map $_->[1], @initializations ],
-			};
-		}
-		push @statements, {
-			type => 'function_declaration_statement',
-			args_list => $args_list,
-			identifier => $identifier,
-			block => $block,
-			is_local => $is_local,
-		};
+		push @statements, $self->parse_syntax_function_declaration($whitespace_prefix);
 		
 
 	} elsif ($self->is_token_val( keyword => 'local' )) {
@@ -465,8 +440,9 @@ our %snow_syntax_unary_operations_hash;
 @snow_syntax_unary_operations_hash{@snow_syntax_unary_operations} = ();
 
 sub parse_syntax_expression {
-	my ($self) = @_;
+	my ($self, $is_long_table) = @_;
 
+	# say 'debug: ', join ', ', @{$self->peek_token};
 	my $expression;
 	if ($self->is_token_val( keyword => 'nil' )) {
 		$self->next_token;
@@ -504,6 +480,16 @@ sub parse_syntax_expression {
 		$self->next_token;
 		my $table_constructor = $self->parse_syntax_table_constructor;
 		$self->assert_step_token_val( symbol => ']' );
+		return $table_constructor
+
+	} elsif ($self->is_token_val( symbol => ':' )) {
+		$self->next_token;
+		my $table_constructor = $self->parse_syntax_long_table_constructor("$self->{whitespace_prefix}\t");
+		return $table_constructor
+
+	} elsif ($is_long_table and ($self->is_token_val( keyword => 'function' ) or $self->is_token_val( keyword => 'method' ))) {
+		$self->next_token;
+		my $table_constructor = $self->parse_syntax_long_table_constructor("$self->{whitespace_prefix}\t");
 		return $table_constructor
 
 	} elsif (($self->is_token_type('symbol') or $self->is_token_type('keyword')) and exists $snow_syntax_unary_operations_hash{$self->peek_token->[1]}) {
@@ -727,6 +713,53 @@ sub parse_syntax_table_constructor {
 	}
 }
 
+sub parse_syntax_long_table_constructor {
+	my ($self, $whitespace_prefix) = @_;
+
+	my $last_whitespace_prefix = $self->{whitespace_prefix};
+	$self->{whitespace_prefix} = $whitespace_prefix;
+
+	my $is_assoc_table;
+	my @table_fields;
+	while ($self->parse_syntax_whitespace($whitespace_prefix)) {
+		if ($self->is_token_val( keyword => 'function') or $self->is_token_val( keyword => 'method')) {
+			$is_assoc_table = $is_assoc_table // 1;
+			$self->confess_at_current_offset("found function declaration in non-associative table") unless $is_assoc_table;
+			my $function_statement = $self->parse_syntax_function_declaration($whitespace_prefix);
+			push @table_fields, {
+				type => 'identifier_field',
+				identifier => $function_statement->{identifier},
+				expression => {
+					type => 'function_expression',
+					args_list => $function_statement->{args_list},
+					block => $function_statement->{block},
+				}
+			};
+		} else {
+			my $expression = $self->parse_syntax_expression;
+			$is_assoc_table = $is_assoc_table // $self->is_token_val( symbol => '=>' );
+			if ($is_assoc_table) {
+				$self->assert_step_token_val( symbol => '=>' );
+				my $val_expression = $self->parse_syntax_expression;
+
+				if ($expression->{type} eq 'identifier_expression') {
+					push @table_fields, { type => 'identifier_field', identifier => $expression->{identifier}, expression => $val_expression };
+				} else {
+					push @table_fields, { type => 'expressive_field', key_expression => $expression, expression => $val_expression };
+				}
+			} else {
+				push @table_fields, { type => 'array_field', expression => $expression };
+			}
+		}
+	}
+
+	$self->{whitespace_prefix} = $last_whitespace_prefix;
+	return {
+		type => 'table_expression',
+		table_fields => \@table_fields,
+	}
+}
+
 
 my %snow_syntax_default_variable_identifiers = (
 	'?' => 'b',
@@ -857,6 +890,48 @@ sub parse_syntax_function_expression {
 		block => $block,
 	}
 }
+
+
+
+sub parse_syntax_function_declaration {
+	my ($self, $whitespace_prefix) = @_;
+
+	my $is_local = $self->is_token_val( keyword => 'local' );
+	$self->next_token if $is_local;
+	my $statement_type = $self->next_token->[1];
+
+	$self->assert_next_not_whitespace(identifier => "$statement_type statement");
+	my $identifier = $self->assert_step_token_type('identifier')->[1];
+
+	my $has_parenthesis = $self->is_token_val( symbol => '(' );
+	$self->next_token if $has_parenthesis;
+
+	my $args_list = $self->parse_syntax_args_list;
+	my @initializations = grep ref $_, @$args_list;
+	@$args_list = map { ref $_ ? $_->[0] : $_ } @$args_list;
+
+	unshift @$args_list, "%self" if $statement_type eq 'method';
+	$self->assert_step_token_val( symbol => ')' ) if $has_parenthesis;
+	$self->assert_next_whitespace("$statement_type declaration statement");
+
+	my $block = $self->parse_syntax_block("$whitespace_prefix\t");
+	if (@initializations) {
+		unshift @$block, {
+			type => 'assignment_statement',
+			assignment_type => '?=',
+			var_list => [ map { type => 'identifier_expression', identifier => substr $_->[0], 1 }, @initializations ],
+			expression_list => [ map $_->[1], @initializations ],
+		};
+	}
+	return {
+		type => 'function_declaration_statement',
+		args_list => $args_list,
+		identifier => $identifier,
+		block => $block,
+		is_local => $is_local,
+	}
+}
+
 
 
 

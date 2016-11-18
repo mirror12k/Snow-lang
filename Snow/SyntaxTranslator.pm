@@ -38,10 +38,14 @@ sub parse {
 
 	$self->{globals_defined} = {
 		print => '&',
+		error => '&',
 		type => '&',
 		tostring => '&',
 		require => '&',
 		select => '&',
+
+		setmetatable => '&',
+		getmetatable => '&',
 
 		_G => '%',
 		

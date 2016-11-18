@@ -596,7 +596,7 @@ sub parse_syntax_prefix_expression {
 				or $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' ) or $self->is_token_type( 'identifier' )
 				or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
-				or $self->is_token_val( keyword => ':' )
+				or $self->is_token_val( symbol => ':' )
 			) {
 			my $args_list = [ $self->parse_syntax_function_args_list ];
 			$expression = { type => 'function_call_expression', expression => $expression, args_list => $args_list };
@@ -652,7 +652,7 @@ sub parse_syntax_function_args_list {
 		if ( $self->is_token_type( 'literal_string' ) or $self->is_token_type( 'numeric_constant' ) or $self->is_token_type( 'identifier' )
 				or $self->is_token_val( symbol => '[' ) or $self->is_token_val( symbol => '{' ) or $self->is_token_val( symbol => '...' )
 				or $self->is_token_val( keyword => 'nil' ) or $self->is_token_val( keyword => 'true' ) or $self->is_token_val( keyword => 'false' )
-				or $self->is_token_val( keyword => ':' ) or $self->is_token_val( symbol => '...' )
+				or $self->is_token_val( symbol => ':' ) or $self->is_token_val( symbol => '...' )
 			) {
 			@args_list = $self->parse_syntax_expression_list;
 		}
@@ -670,6 +670,11 @@ sub parse_syntax_expression_list {
 	while ($self->is_token_val( symbol => ',' )) {
 		$self->next_token;
 		$self->skip_whitespace_tokens;
+		push @expression_list, $self->parse_syntax_expression;
+	}
+
+	# parse a tail long table expression
+	if ($self->is_token_val( symbol => ':' )) {
 		push @expression_list, $self->parse_syntax_expression;
 	}
 
@@ -733,7 +738,7 @@ sub parse_syntax_long_table_constructor {
 					type => 'function_expression',
 					args_list => $function_statement->{args_list},
 					block => $function_statement->{block},
-				}
+				},
 			};
 		} else {
 			my $expression = $self->parse_syntax_expression;

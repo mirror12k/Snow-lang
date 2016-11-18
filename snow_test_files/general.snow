@@ -154,5 +154,18 @@ local t =:
 			print 'hey'
 		else
 			print 'nope'
-	asdf => class 'asdf',:
+	asdf => class 'asdf':
 		val => 5
+
+local classes =:
+	class 'asdf':
+		val => 5
+	class 'qwer':
+		val => 15
+	class 'test.lol':
+		val => 'lol'
+	class:
+		val => 'anon'
+
+
+

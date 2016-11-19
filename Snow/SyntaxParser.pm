@@ -435,7 +435,7 @@ sub dump_syntax {
 
 
 
-our @snow_syntax_unary_operations = ('not', '#', '-', '~');
+our @snow_syntax_unary_operations = ('not', '|', '-', '~');
 our %snow_syntax_unary_operations_hash;
 @snow_syntax_unary_operations_hash{@snow_syntax_unary_operations} = ();
 

@@ -41,6 +41,7 @@ sub parse {
 		error => '&',
 		type => '&',
 		tostring => '&',
+		tonumber => '&',
 		require => '&',
 		select => '&',
 
@@ -411,11 +412,12 @@ sub translate_syntax_expression {
 	} elsif ($expression->{type} eq 'unary_expression') {
 		my $var_type;
 		my $check_type;
+		my $operation = $expression->{operation};
 		if ($expression->{operation} eq 'not') {
 			$var_type = '?';
-		} elsif ($expression->{operation} eq '#') {
+		} elsif ($expression->{operation} eq '|') {
+			$operation = '#';
 			$var_type = '#';
-			$check_type = '%';
 		} elsif ($expression->{operation} eq '-') {
 			$var_type = '#';
 			$check_type = '#';
@@ -424,7 +426,7 @@ sub translate_syntax_expression {
 		}
 		my $sub_expression = $self->translate_syntax_expression($expression->{expression});
 		$self->assert_sub_expression_type($check_type => $sub_expression) if defined $check_type;
-		return { type => 'unary_expression', operation => $expression->{operation}, expression => $sub_expression, var_type => $var_type }
+		return { type => 'unary_expression', operation => $operation, expression => $sub_expression, var_type => $var_type }
 
 	} elsif ($expression->{type} eq 'binary_expression') {
 		my $var_type;

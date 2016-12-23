@@ -3,6 +3,9 @@ The Snow programming language is a scripting language which compiles directly to
 Created because lua has way too much boilerplate.
 It's purpose is to simplify lua programming with streamlined syntax and simpler class definitions.
 
+## installation
+Requires perl and the [Sugar utility library](https://github.com/mirror12k/perl-Sugar-utility-library).
+
 ## features
 - compiles directly to valid lua
 - dynamic whitespace

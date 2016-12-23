@@ -16,13 +16,13 @@ sub compile_snow_to_lua {
 	my $parser = Snow::SyntaxTranslator->new(filepath => $filepath);
 	$parser->parse;
 	my $stringer = Snow::Lua::SyntaxStringer->new;
-	say $stringer->to_string($parser->{syntax_tree});
+	return $stringer->to_string($parser->{syntax_tree});
 }
 
 
 
 sub main {
-	compile_snow_to_lua $_ foreach @_;
+	say compile_snow_to_lua $_ foreach @_;
 }
 
 
